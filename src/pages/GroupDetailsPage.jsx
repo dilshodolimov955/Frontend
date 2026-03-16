@@ -1,5 +1,4 @@
 import { useMemo, useRef, useState } from "react";
-import HomeworkDetailPage from "./HomeworkDetailPage";
 
 const makeDateHeaders = () => {
   return [
@@ -36,11 +35,18 @@ const defaultHomeworkStudents = [
   { id: 4, name: "Dilshod Olimov Farhod o'g'li", sentAt: "10 Mart, 2026 15:39", status: "kutayotgan" },
   { id: 5, name: "Bunyodbek G'ulomjonov", sentAt: "11 Mart, 2026 10:16", status: "kutayotgan" },
   { id: 6, name: "Axrorbek Mengilov", sentAt: "10 Mart, 2026 19:53", status: "kutayotgan" },
-  { id: 7, name: "Sirojiddin Oyosboyev", sentAt: "10 Mart, 2026 13:54", status: "qabul" },
-  { id: 8, name: "Olimjon Murtozoyev", sentAt: "11 Mart, 2026 09:25", status: "qabul" },
-  { id: 9, name: "Sabina Norbekova", sentAt: "10 Mart, 2026 17:33", status: "qaytarilgan" },
-  { id: 10, name: "Qo'chqorboyev Abbos Abulqosim o'g'li", sentAt: "10 Mart, 2026 19:52", status: "bajarilmagan" },
-  { id: 11, name: "Murodjon Soliyev", sentAt: "-", status: "bajarilmagan" },
+  { id: 7, name: "Sirojiddin Oyosboyev", sentAt: "10 Mart, 2026 13:54", status: "kutayotgan" },
+  { id: 8, name: "Olimjon Murtozoyev", sentAt: "11 Mart, 2026 09:25", status: "kutayotgan" },
+  { id: 9, name: "Sabina Norbekova", sentAt: "10 Mart, 2026 17:33", status: "kutayotgan" },
+  { id: 10, name: "Qo'chqorboyev Abbos Abulqosim o'g'li", sentAt: "10 Mart, 2026 19:52", status: "kutayotgan" },
+  { id: 11, name: "Murodjon Soliyev", sentAt: "10 Mart, 2026 20:11", status: "kutayotgan" },
+  { id: 12, name: "Azimjon Yoqubov", sentAt: "10 Mart, 2026 18:12", status: "bajarilmagan" },
+  { id: 13, name: "Shahzod Ergashev", sentAt: "10 Mart, 2026 18:44", status: "bajarilmagan" },
+  { id: 14, name: "Muhammadali Qodirov", sentAt: "10 Mart, 2026 19:00", status: "bajarilmagan" },
+  { id: 15, name: "Abbosbek Nematov", sentAt: "10 Mart, 2026 21:05", status: "bajarilmagan" },
+  { id: 16, name: "Sarvarbek Karimov", sentAt: "10 Mart, 2026 16:21", status: "qaytarilgan" },
+  { id: 17, name: "Bekzod Sobirov", sentAt: "10 Mart, 2026 12:21", status: "qabul" },
+  { id: 18, name: "Javohir Xudoyberdiyev", sentAt: "10 Mart, 2026 11:41", status: "qabul" },
 ];
 
 const defaultHomeworks = [
@@ -78,6 +84,18 @@ const defaultHomeworks = [
     deadline: "26 Fev, 2026 15:10",
     lessonDate: "25 Fev, 2026",
     description: "Nested route va NavLink",
+    studentStatuses: defaultHomeworkStudents,
+  },
+  {
+    id: 4,
+    title: "React hooks",
+    total: 15,
+    submitted: 0,
+    checked: 2,
+    assignedAt: "18 Fev, 2026 20:53",
+    deadline: "19 Fev, 2026 12:53",
+    lessonDate: "18 Fev, 2026",
+    description: "React hooks practice",
     studentStatuses: defaultHomeworkStudents,
   },
 ];
@@ -851,7 +869,7 @@ export default function GroupDetailsPage({
               <div className="flex-1 min-h-0 overflow-auto p-4">
                 {activeLessonTab === "uyga-vazifa" && (
                   <div className="overflow-auto">
-                    <table className="w-full min-w-[980px] text-sm">
+                    <table className="w-full min-w-[1050px] text-sm">
                       <thead className={darkMode ? "bg-slate-800" : "bg-slate-50"}>
                         <tr className={`border-b ${innerBorderClass}`}>
                           <th className={`text-left px-3 py-3 w-[50px] ${theme.text}`}>#</th>
@@ -862,7 +880,7 @@ export default function GroupDetailsPage({
                           <th className={`text-left px-3 py-3 w-[180px] ${theme.text}`}>Berilgan vaqt</th>
                           <th className={`text-left px-3 py-3 w-[180px] ${theme.text}`}>Tugash vaqti</th>
                           <th className={`text-left px-3 py-3 w-[150px] ${theme.text}`}>Dars sanasi</th>
-                          <th className={`text-center px-3 py-3 w-[90px] ${theme.text}`}>Amal</th>
+                          <th className={`text-center px-3 py-3 w-[70px] ${theme.text}`}></th>
                         </tr>
                       </thead>
 
@@ -897,12 +915,17 @@ export default function GroupDetailsPage({
                             <td className={`px-3 py-3 ${theme.text}`}>{item.assignedAt}</td>
                             <td className={`px-3 py-3 ${theme.text}`}>{item.deadline}</td>
                             <td className={`px-3 py-3 ${theme.text}`}>{item.lessonDate}</td>
+
                             <td className="px-3 py-3 text-center">
                               <button
-                                onClick={() => deleteHomework(item.id)}
-                                className="text-red-500 text-xs"
+                                onClick={() => openHomeworkDetail(item)}
+                                className={`w-8 h-8 rounded-lg flex items-center justify-center mx-auto ${
+                                  darkMode
+                                    ? "hover:bg-slate-800 text-slate-300"
+                                    : "hover:bg-slate-100 text-slate-500"
+                                }`}
                               >
-                                O‘chirish
+                                ⋮
                               </button>
                             </td>
                           </tr>
@@ -1287,10 +1310,126 @@ export default function GroupDetailsPage({
       )}
 
       {selectedHomework && (
-        <HomeworkDetailPage
-          homework={selectedHomework}
-          onBack={() => setSelectedHomework(null)}
-        />
+        <div className="fixed inset-0 z-[80] bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-7xl h-[88vh] rounded-2xl shadow-xl border overflow-hidden flex flex-col">
+            <div className="shrink-0 px-6 py-4 border-b flex items-center gap-3">
+              <button
+                onClick={() => setSelectedHomework(null)}
+                className="text-slate-500 hover:text-slate-800 text-xl"
+              >
+                ←
+              </button>
+              <h2 className="text-2xl font-bold text-slate-800">
+                {selectedHomework.title}
+              </h2>
+            </div>
+
+            <div className="shrink-0 px-6 py-4 border-b">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <p className="text-sm text-slate-500">Mavzu</p>
+                  <p className="text-xl font-semibold text-slate-900 mt-1">
+                    {selectedHomework.title}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-slate-500">Tugash vaqti</p>
+                  <p className="text-xl font-semibold text-slate-900 mt-1">
+                    {selectedHomework.deadline}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="shrink-0 px-6 pt-4 border-b">
+              <div className="flex items-center gap-8 overflow-x-auto">
+                <button
+                  onClick={() => setHomeworkDetailTab("kutayotgan")}
+                  className={`pb-3 text-sm font-medium border-b-2 ${
+                    homeworkDetailTab === "kutayotgan"
+                      ? "border-emerald-500 text-emerald-600"
+                      : "border-transparent text-slate-500"
+                  }`}
+                >
+                  Kutayotganlar
+                  <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-yellow-400 px-1.5 text-[10px] text-white">
+                    {getCountByStatus("kutayotgan")}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setHomeworkDetailTab("qaytarilgan")}
+                  className={`pb-3 text-sm font-medium border-b-2 ${
+                    homeworkDetailTab === "qaytarilgan"
+                      ? "border-emerald-500 text-emerald-600"
+                      : "border-transparent text-slate-500"
+                  }`}
+                >
+                  Qaytarilganlar
+                  <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-yellow-400 px-1.5 text-[10px] text-white">
+                    {getCountByStatus("qaytarilgan")}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setHomeworkDetailTab("qabul")}
+                  className={`pb-3 text-sm font-medium border-b-2 ${
+                    homeworkDetailTab === "qabul"
+                      ? "border-emerald-500 text-emerald-600"
+                      : "border-transparent text-slate-500"
+                  }`}
+                >
+                  Qabul qilinganlar
+                  <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-yellow-400 px-1.5 text-[10px] text-white">
+                    {getCountByStatus("qabul")}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setHomeworkDetailTab("bajarilmagan")}
+                  className={`pb-3 text-sm font-medium border-b-2 ${
+                    homeworkDetailTab === "bajarilmagan"
+                      ? "border-emerald-500 text-emerald-600"
+                      : "border-transparent text-slate-500"
+                  }`}
+                >
+                  Bajarilmagan
+                  <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-yellow-400 px-1.5 text-[10px] text-white">
+                    {getCountByStatus("bajarilmagan")}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-auto px-6 py-4">
+              <div className="min-w-[800px]">
+                <div className="grid grid-cols-[1.3fr_0.7fr] border-b pb-3 text-sm font-medium text-slate-500">
+                  <div>O'quvchi ismi</div>
+                  <div>Uyga vazifa jo'natilgan vaqt</div>
+                </div>
+
+                {filteredHomeworkStudents.map((item, index) => (
+                  <div
+                    key={item.id}
+                    className={`grid grid-cols-[1.3fr_0.7fr] py-4 border-b text-sm ${
+                      index % 2 === 0 ? "bg-white" : "bg-slate-50/50"
+                    }`}
+                  >
+                    <div className="text-slate-800 px-1">{item.name}</div>
+                    <div className="text-slate-700 px-1">{item.sentAt}</div>
+                  </div>
+                ))}
+
+                {filteredHomeworkStudents.length === 0 && (
+                  <div className="py-16 text-center text-slate-400">
+                    Bu bo‘limda hozircha ma’lumot yo‘q
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
