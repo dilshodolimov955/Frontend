@@ -1,91 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-
-const branches = [
-  "AICoder markazi",
-  "Fizika va Matematika",
-  "4-maktab",
-  "Niner markazi",
-  "SAT,IELTS,AP,CONSULTING centre",
-  "IELTS full mock centre",
-  "IELTS full mock",
-  "IELTS full mock_centre_1",
-  "IELTS,SAT,CONSULTING_n1",
-  "No name",
-  "Debate center",
-  "Academia",
-  "Arxiv",
-];
-
-const defaultTeachers = [
-  {
-    id: 1,
-    fullName: "otabek ikromov",
-    group: "-",
-    phone: "+998333223232",
-    birthDate: "2002-02-21",
-    createdAt: "2026-02-24",
-    createdTime: "16:44",
-    addedBy: "Islombek Baxromov",
-    coin: 0,
-    gender: "Erkak",
-    email: "otabek@gmail.com",
-    password: "",
-    photo: "",
-    branch: "AICoder markazi",
-    archived: false,
-  },
-  {
-    id: 2,
-    fullName: "rashidov akmal",
-    group: "Pre IELTS",
-    phone: "+998333333333",
-    birthDate: "2000-02-12",
-    createdAt: "2026-02-24",
-    createdTime: "16:36",
-    addedBy: "Islombek Baxromov",
-    coin: 10,
-    gender: "Erkak",
-    email: "rashidov@gmail.com",
-    password: "",
-    photo: "",
-    branch: "AICoder markazi",
-    archived: false,
-  },
-  {
-    id: 3,
-    fullName: "Nurmahmadov Behro'z",
-    group: "SAT math 2026",
-    phone: "+998200130184",
-    birthDate: "2007-09-01",
-    createdAt: "2026-02-20",
-    createdTime: "11:14",
-    addedBy: "Islombek Baxromov",
-    coin: 100,
-    gender: "Erkak",
-    email: "behroz@gmail.com",
-    password: "",
-    photo: "",
-    branch: "AICoder markazi",
-    archived: false,
-  },
-  {
-    id: 4,
-    fullName: "Maftuna Murodimova",
-    group: "SAT math 2026",
-    phone: "+998338504455",
-    birthDate: "2007-11-17",
-    createdAt: "2026-02-20",
-    createdTime: "08:24",
-    addedBy: "Islombek Baxromov",
-    coin: 0,
-    gender: "Ayol",
-    email: "maftuna@gmail.com",
-    password: "",
-    photo: "",
-    branch: "AICoder markazi",
-    archived: false,
-  },
-];
+import { groupsApi, teachersApi } from "../api/crmApi";
 
 const formatDate = (value) => {
   if (!value) return "-";
@@ -102,46 +16,78 @@ const getInitials = (name = "") => {
     .join("");
 };
 
-export default function TeachersPage({ theme, darkMode }) {
-  const [activeBranch, setActiveBranch] = useState("AICoder markazi");
+export default function TeachersPage({ theme, darkMode, currentUser }) {
   const [activeTab, setActiveTab] = useState("active");
   const [showDrawer, setShowDrawer] = useState(false);
   const [editingTeacherId, setEditingTeacherId] = useState(null);
   const [search, setSearch] = useState("");
 
-  const [teachers, setTeachers] = useState(() => {
-    const saved = localStorage.getItem("crm_teachers");
-    return saved ? JSON.parse(saved) : defaultTeachers;
-  });
+  const [teachers, setTeachers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState("");
+  const [activeTeacher, setActiveTeacher] = useState(null);
+  const [teacherGroups, setTeacherGroups] = useState([]);
+  const [teacherGroupsLoading, setTeacherGroupsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
-    phone: "+998",
-    email: "",
     fullName: "",
-    birthDate: "",
+    email: "",
     password: "",
-    group: "",
-    gender: "Erkak",
+    position: "",
+    experience: "",
     photo: "",
-    branch: "AICoder markazi",
   });
 
-  useEffect(() => {
-    localStorage.setItem("crm_teachers", JSON.stringify(teachers));
-  }, [teachers]);
+  const loadTeachers = async () => {
+    try {
+      setLoading(true);
+      const result = await teachersApi.getAll();
+      const list = Array.isArray(result?.data) ? result.data : [];
+
+      const mapped = list.map((teacher) => {
+        const createdAtSource = teacher.created_at || teacher.createdAt;
+        const createdAtIso = createdAtSource
+          ? new Date(createdAtSource).toISOString()
+          : null;
+        const createdAt = createdAtIso ? createdAtIso.slice(0, 10) : "";
+        const createdTime = createdAtSource
+          ? new Date(createdAtSource).toLocaleTimeString("en-GB", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "-";
+
+        return {
+          id: teacher.id,
+          fullName: teacher.fullName,
+          position: teacher.position || "-",
+          experience: Number.isFinite(Number(teacher.experience))
+            ? Number(teacher.experience)
+            : 0,
+          email: teacher.email || "-",
+          createdAt,
+          createdTime,
+          photo: teacher.photo || "",
+          archived: teacher.status !== "ACTIVE",
+        };
+      });
+
+      setTeachers(mapped);
+    } catch (error) {
+      setTeachers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (!showDrawer) {
-      setFormData((prev) => ({
-        ...prev,
-        branch: activeBranch,
-      }));
-    }
-  }, [activeBranch, showDrawer]);
+    loadTeachers();
+  }, []);
 
   const filteredTeachers = useMemo(() => {
     return teachers.filter((teacher) => {
-      const matchesBranch = teacher.branch === activeBranch;
+      const matchesBranch = true;
       const matchesArchive =
         activeTab === "active" ? !teacher.archived : teacher.archived;
 
@@ -149,58 +95,51 @@ export default function TeachersPage({ theme, darkMode }) {
       const matchesSearch =
         !query ||
         teacher.fullName.toLowerCase().includes(query) ||
-        teacher.phone.toLowerCase().includes(query) ||
         teacher.email.toLowerCase().includes(query) ||
-        teacher.group.toLowerCase().includes(query);
+        teacher.position.toLowerCase().includes(query);
 
       return matchesBranch && matchesArchive && matchesSearch;
     });
-  }, [teachers, activeBranch, activeTab, search]);
+  }, [teachers, activeTab, search]);
 
   const resetForm = () => {
     setEditingTeacherId(null);
     setFormData({
-      phone: "+998",
-      email: "",
       fullName: "",
-      birthDate: "",
+      email: "",
       password: "",
-      group: "",
-      gender: "Erkak",
+      position: "",
+      experience: "",
       photo: "",
-      branch: activeBranch,
     });
+    setPhotoPreview("");
   };
 
   const openAddDrawer = () => {
     setEditingTeacherId(null);
     setFormData({
-      phone: "+998",
-      email: "",
       fullName: "",
-      birthDate: "",
+      email: "",
       password: "",
-      group: "",
-      gender: "Erkak",
+      position: "",
+      experience: "",
       photo: "",
-      branch: activeBranch,
     });
+    setPhotoPreview("");
     setShowDrawer(true);
   };
 
   const openEditDrawer = (teacher) => {
     setEditingTeacherId(teacher.id);
     setFormData({
-      phone: teacher.phone,
-      email: teacher.email,
       fullName: teacher.fullName,
-      birthDate: teacher.birthDate,
-      password: teacher.password || "",
-      group: teacher.group,
-      gender: teacher.gender,
-      photo: teacher.photo || "",
-      branch: teacher.branch,
+      email: teacher.email,
+      password: "",
+      position: teacher.position,
+      experience: String(teacher.experience ?? ""),
+      photo: "",
     });
+    setPhotoPreview(teacher.photo || "");
     setShowDrawer(true);
   };
 
@@ -213,14 +152,12 @@ export default function TeachersPage({ theme, darkMode }) {
     const { name, value, files } = e.target;
 
     if (name === "photo" && files?.[0]) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prev) => ({
-          ...prev,
-          photo: reader.result,
-        }));
-      };
-      reader.readAsDataURL(files[0]);
+      const file = files[0];
+      setFormData((prev) => ({
+        ...prev,
+        photo: file,
+      }));
+      setPhotoPreview(URL.createObjectURL(file));
       return;
     }
 
@@ -230,96 +167,92 @@ export default function TeachersPage({ theme, darkMode }) {
     }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    const normalizedExperience = Number(formData.experience);
+
     if (
-      !formData.phone.trim() ||
       !formData.email.trim() ||
       !formData.fullName.trim() ||
-      !formData.birthDate
+      !formData.position.trim() ||
+      !Number.isFinite(normalizedExperience) ||
+      normalizedExperience < 0 ||
+      (editingTeacherId === null && !formData.password.trim())
     ) {
-      alert("Majburiy maydonlarni to‘ldiring");
+      alert("Majburiy maydonlarni to'ldiring");
       return;
     }
 
-    if (editingTeacherId !== null) {
-      setTeachers((prev) =>
-        prev.map((teacher) =>
-          teacher.id === editingTeacherId
-            ? {
-                ...teacher,
-                phone: formData.phone.trim(),
-                email: formData.email.trim(),
-                fullName: formData.fullName.trim(),
-                birthDate: formData.birthDate,
-                password: formData.password,
-                group: formData.group.trim() || "-",
-                gender: formData.gender,
-                photo: formData.photo,
-                branch: formData.branch,
-              }
-            : teacher
-        )
-      );
-    } else {
-      const now = new Date();
-      const createdAt = now.toISOString().slice(0, 10);
-      const createdTime = now.toLocaleTimeString("en-GB", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-
-      const newTeacher = {
-        id: Date.now(),
-        phone: formData.phone.trim(),
-        email: formData.email.trim(),
+    try {
+      setSaving(true);
+      const payload = {
         fullName: formData.fullName.trim(),
-        birthDate: formData.birthDate,
-        password: formData.password,
-        group: formData.group.trim() || "-",
-        gender: formData.gender,
-        photo: formData.photo,
-        branch: formData.branch,
-        createdAt,
-        createdTime,
-        addedBy: "Admin",
-        coin: 0,
-        archived: false,
+        email: formData.email.trim(),
+        position: formData.position.trim(),
+        experience: normalizedExperience,
+        ...(formData.photo instanceof File ? { photo: formData.photo } : {}),
+        ...(formData.password.trim()
+          ? { password: formData.password.trim() }
+          : {}),
       };
 
-      setTeachers((prev) => [newTeacher, ...prev]);
+      if (editingTeacherId !== null) {
+        await teachersApi.update(editingTeacherId, payload);
+      } else {
+        await teachersApi.create(payload);
+      }
+
+      await loadTeachers();
+      closeDrawer();
+    } catch (error) {
+      alert(error?.response?.data?.message || "O'qituvchini saqlashda xato");
+    } finally {
+      setSaving(false);
     }
-
-    closeDrawer();
-  };
-
-  const handleDelete = (id) => {
-    setTeachers((prev) => prev.filter((teacher) => teacher.id !== id));
   };
 
   const toggleArchive = (id) => {
-    setTeachers((prev) =>
-      prev.map((teacher) =>
-        teacher.id === id
-          ? { ...teacher, archived: !teacher.archived }
-          : teacher
-      )
-    );
+    alert("Arxiv uchun alohida endpoint yo'q");
   };
 
-  const updateCoin = (id, type) => {
-    setTeachers((prev) =>
-      prev.map((teacher) =>
-        teacher.id === id
-          ? {
-              ...teacher,
-              coin:
-                type === "plus"
-                  ? teacher.coin + 1
-                  : Math.max(0, teacher.coin - 1),
-            }
-          : teacher
-      )
-    );
+  const openTeacherGroups = async (teacher) => {
+    setActiveTeacher(teacher);
+    setTeacherGroupsLoading(true);
+
+    try {
+      const groupsRes = await groupsApi.getAll();
+      const groupsList = Array.isArray(groupsRes?.data) ? groupsRes.data : [];
+      const relatedGroups = groupsList.filter(
+        (group) => Number(group.teacherId) === Number(teacher.id),
+      );
+
+      const studentsResults = await Promise.allSettled(
+        relatedGroups.map((group) => groupsApi.getStudentsByGroup(group.id)),
+      );
+
+      const mappedGroups = relatedGroups.map((group, index) => {
+        const studentsResult = studentsResults[index];
+        const students =
+          studentsResult?.status === "fulfilled" &&
+          Array.isArray(studentsResult.value?.data)
+            ? [...studentsResult.value.data].sort((a, b) =>
+                String(a?.fullName || "").localeCompare(
+                  String(b?.fullName || ""),
+                ),
+              )
+            : [];
+
+        return {
+          ...group,
+          students,
+        };
+      });
+
+      setTeacherGroups(mappedGroups);
+    } catch {
+      setTeacherGroups([]);
+    } finally {
+      setTeacherGroupsLoading(false);
+    }
   };
 
   return (
@@ -334,24 +267,10 @@ export default function TeachersPage({ theme, darkMode }) {
 
           <div className="flex flex-wrap items-stretch sm:items-center gap-2 sm:gap-3 w-full xl:w-auto">
             <button
-              className={`px-4 py-2.5 rounded-xl border text-sm ${
-                darkMode
-                  ? "border-slate-700 text-slate-200 hover:bg-slate-800"
-                  : "border-slate-200 text-slate-700 hover:bg-slate-50"
-              }`}
-            >
-              Export
-            </button>
-
-            <button
               onClick={openAddDrawer}
               className="bg-violet-600 hover:bg-violet-700 text-white px-4 sm:px-5 py-3 rounded-xl font-medium"
             >
               + O‘qituvchi qo‘shish
-            </button>
-
-            <button className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 sm:px-5 py-3 rounded-xl font-medium">
-              Exceldan yuklash
             </button>
           </div>
         </div>
@@ -386,46 +305,47 @@ export default function TeachersPage({ theme, darkMode }) {
           />
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {branches.map((branch) => (
-            <button
-              key={branch}
-              onClick={() => setActiveBranch(branch)}
-              className={`max-w-full break-words px-4 py-2 rounded-xl border text-sm transition ${
-                activeBranch === branch ? theme.tabActive : theme.tab
-              }`}
-            >
-              {branch}
-            </button>
-          ))}
-        </div>
-
         <div className="mt-5 hidden lg:block w-full min-w-0">
           <div className="rounded-2xl border overflow-hidden">
             <div className="overflow-x-auto w-full">
               <table className="w-full text-sm table-fixed">
                 <thead className={darkMode ? "bg-slate-900/60" : "bg-slate-50"}>
                   <tr className={theme.soft}>
-                    <th className="text-left font-medium px-3 py-4 w-[50px]">#</th>
-                    <th className="text-left font-medium px-3 py-4 w-[200px]">Nomi</th>
-                    <th className="text-left font-medium px-3 py-4 w-[150px]">Guruh</th>
-                    <th className="text-left font-medium px-3 py-4 w-[130px]">Telefon</th>
+                    <th className="text-left font-medium px-3 py-4 w-[50px]">
+                      #
+                    </th>
+                    <th className="text-left font-medium px-3 py-4 w-[200px]">
+                      Nomi
+                    </th>
+                    <th className="text-left font-medium px-3 py-4 w-[150px]">
+                      Lavozim
+                    </th>
+                    <th className="text-left font-medium px-3 py-4 w-[130px]">
+                      Tajriba
+                    </th>
                     <th className="text-left font-medium px-3 py-4 w-[120px]">
-                      Tug‘ilgan sana
+                      Email
                     </th>
                     <th className="text-left font-medium px-3 py-4 w-[130px]">
                       Yaratilgan sana
                     </th>
-                    <th className="text-left font-medium px-3 py-4 w-[130px]">
-                      Kim qo‘shgan
+                    <th className="text-right font-medium px-3 py-4 w-[130px]">
+                      Amallar
                     </th>
-                    <th className="text-left font-medium px-3 py-4 w-[110px]">Coin</th>
-                    <th className="text-right font-medium px-3 py-4 w-[130px]">Amallar</th>
                   </tr>
                 </thead>
 
                 <tbody>
-                  {filteredTeachers.length > 0 ? (
+                  {loading ? (
+                    <tr>
+                      <td
+                        colSpan={7}
+                        className={`text-center py-10 ${theme.soft}`}
+                      >
+                        Yuklanmoqda...
+                      </td>
+                    </tr>
+                  ) : filteredTeachers.length > 0 ? (
                     filteredTeachers.map((teacher, index) => (
                       <tr
                         key={teacher.id}
@@ -435,7 +355,9 @@ export default function TeachersPage({ theme, darkMode }) {
                             : "border-slate-100 hover:bg-slate-50/70"
                         }`}
                       >
-                        <td className={`px-3 py-4 ${theme.text}`}>{index + 1}</td>
+                        <td className={`px-3 py-4 ${theme.text}`}>
+                          {index + 1}
+                        </td>
 
                         <td className="px-3 py-4">
                           <div className="flex items-center gap-3 min-w-0">
@@ -467,57 +389,23 @@ export default function TeachersPage({ theme, darkMode }) {
                         </td>
 
                         <td className={`px-3 py-4 ${theme.text}`}>
-                          <div className="truncate" title={teacher.group}>
-                            {teacher.group}
+                          <div className="truncate" title={teacher.position}>
+                            {teacher.position}
                           </div>
                         </td>
 
                         <td className={`px-3 py-4 ${theme.text} truncate`}>
-                          {teacher.phone}
+                          {teacher.experience} yil
                         </td>
 
-                        <td className={`px-3 py-4 ${theme.text}`}>
-                          {formatDate(teacher.birthDate)}
+                        <td className={`px-3 py-4 ${theme.text} truncate`}>
+                          {teacher.email}
                         </td>
 
                         <td className={`px-3 py-4 ${theme.text}`}>
                           <div>{formatDate(teacher.createdAt)}</div>
                           <div className={`text-xs mt-1 ${theme.soft}`}>
                             {teacher.createdTime}
-                          </div>
-                        </td>
-
-                        <td className={`px-3 py-4 ${theme.text} truncate`}>
-                          {teacher.addedBy}
-                        </td>
-
-                        <td className="px-3 py-4">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span>🪙</span>
-                            <span className={theme.text}>{teacher.coin}</span>
-
-                            <div className="flex items-center gap-1">
-                              <button
-                                onClick={() => updateCoin(teacher.id, "minus")}
-                                className={`w-7 h-7 rounded-lg border text-xs ${
-                                  darkMode
-                                    ? "border-slate-700 hover:bg-slate-800"
-                                    : "border-slate-200 hover:bg-slate-50"
-                                }`}
-                              >
-                                -
-                              </button>
-                              <button
-                                onClick={() => updateCoin(teacher.id, "plus")}
-                                className={`w-7 h-7 rounded-lg border text-xs ${
-                                  darkMode
-                                    ? "border-slate-700 hover:bg-slate-800"
-                                    : "border-slate-200 hover:bg-slate-50"
-                                }`}
-                              >
-                                +
-                              </button>
-                            </div>
                           </div>
                         </td>
 
@@ -536,15 +424,15 @@ export default function TeachersPage({ theme, darkMode }) {
                             </button>
 
                             <button
-                              onClick={() => handleDelete(teacher.id)}
+                              onClick={() => openTeacherGroups(teacher)}
                               className={`w-9 h-9 rounded-xl border flex items-center justify-center ${
                                 darkMode
-                                  ? "border-slate-700 hover:bg-red-900/30"
-                                  : "border-slate-200 hover:bg-red-50"
+                                  ? "border-slate-700 hover:bg-slate-800"
+                                  : "border-slate-200 hover:bg-slate-50"
                               }`}
-                              title="O‘chirish"
+                              title="Guruhlari"
                             >
-                              🗑️
+                              👥
                             </button>
 
                             <button
@@ -564,7 +452,10 @@ export default function TeachersPage({ theme, darkMode }) {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={9} className={`text-center py-10 ${theme.soft}`}>
+                      <td
+                        colSpan={7}
+                        className={`text-center py-10 ${theme.soft}`}
+                      >
                         Ma’lumot topilmadi
                       </td>
                     </tr>
@@ -612,60 +503,30 @@ export default function TeachersPage({ theme, darkMode }) {
                       </h3>
                     </div>
                     <p className={`text-sm mt-1 truncate ${theme.soft}`}>
-                      {teacher.group}
+                      {teacher.position}
                     </p>
                   </div>
                 </div>
 
                 <div className="mt-4 space-y-2 text-sm min-w-0">
                   <div className={`break-words ${theme.text}`}>
-                    <span className="font-medium">Telefon:</span> {teacher.phone}
+                    <span className="font-medium">Lavozim:</span>{" "}
+                    {teacher.position}
                   </div>
                   <div className={`break-words ${theme.text}`}>
                     <span className="font-medium">Email:</span> {teacher.email}
                   </div>
-                  <div className={theme.text}>
-                    <span className="font-medium">Tug‘ilgan sana:</span>{" "}
-                    {formatDate(teacher.birthDate)}
+                  <div className={`break-words ${theme.text}`}>
+                    <span className="font-medium">Tajriba:</span>{" "}
+                    {teacher.experience} yil
                   </div>
                   <div className={theme.text}>
                     <span className="font-medium">Yaratilgan sana:</span>{" "}
                     {formatDate(teacher.createdAt)} {teacher.createdTime}
                   </div>
-                  <div className={`break-words ${theme.text}`}>
-                    <span className="font-medium">Kim qo‘shgan:</span>{" "}
-                    {teacher.addedBy}
-                  </div>
                 </div>
 
                 <div className="mt-4 flex items-center justify-between gap-3 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <span>🪙</span>
-                    <span className={theme.text}>{teacher.coin}</span>
-                    <div className="flex items-center gap-1 ml-1">
-                      <button
-                        onClick={() => updateCoin(teacher.id, "minus")}
-                        className={`w-7 h-7 rounded-lg border text-xs ${
-                          darkMode
-                            ? "border-slate-700 hover:bg-slate-800"
-                            : "border-slate-200 hover:bg-slate-50"
-                        }`}
-                      >
-                        -
-                      </button>
-                      <button
-                        onClick={() => updateCoin(teacher.id, "plus")}
-                        className={`w-7 h-7 rounded-lg border text-xs ${
-                          darkMode
-                            ? "border-slate-700 hover:bg-slate-800"
-                            : "border-slate-200 hover:bg-slate-50"
-                        }`}
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => toggleArchive(teacher.id)}
@@ -680,15 +541,15 @@ export default function TeachersPage({ theme, darkMode }) {
                     </button>
 
                     <button
-                      onClick={() => handleDelete(teacher.id)}
+                      onClick={() => openTeacherGroups(teacher)}
                       className={`w-9 h-9 rounded-xl border flex items-center justify-center ${
                         darkMode
-                          ? "border-slate-700 hover:bg-red-900/30"
-                          : "border-slate-200 hover:bg-red-50"
+                          ? "border-slate-700 hover:bg-slate-800"
+                          : "border-slate-200 hover:bg-slate-50"
                       }`}
-                      title="O‘chirish"
+                      title="Guruhlari"
                     >
-                      🗑️
+                      👥
                     </button>
 
                     <button
@@ -716,6 +577,73 @@ export default function TeachersPage({ theme, darkMode }) {
             </div>
           )}
         </div>
+
+        {activeTeacher && (
+          <div
+            className={`mt-6 rounded-2xl border p-4 ${
+              darkMode
+                ? "border-slate-800 bg-slate-900/40"
+                : "border-slate-200 bg-slate-50"
+            }`}
+          >
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <h3 className={`text-lg font-semibold ${theme.text}`}>
+                {`${activeTeacher.fullName} guruhlari`}
+              </h3>
+              <button
+                onClick={() => {
+                  setActiveTeacher(null);
+                  setTeacherGroups([]);
+                }}
+                className={`text-sm ${theme.soft}`}
+              >
+                Yopish
+              </button>
+            </div>
+
+            {teacherGroupsLoading ? (
+              <div className={`${theme.soft}`}>Yuklanmoqda...</div>
+            ) : teacherGroups.length === 0 ? (
+              <div className={`${theme.soft}`}>
+                {currentUser?.role === "TEACHER"
+                  ? "Bu o'qituvchida guruh yo'q"
+                  : "Guruhlar topilmadi"}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {teacherGroups.map((group) => (
+                  <div
+                    key={group.id}
+                    className={`rounded-xl border p-3 ${darkMode ? "border-slate-700" : "border-slate-200"}`}
+                  >
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                      <h4 className={`font-semibold ${theme.text}`}>
+                        {group.name}
+                      </h4>
+                      <span className={`text-sm ${theme.soft}`}>
+                        Talabalar: {group.students.length}
+                      </span>
+                    </div>
+
+                    {group.students.length === 0 ? (
+                      <p className={`text-sm ${theme.soft}`}>
+                        Talabalar topilmadi
+                      </p>
+                    ) : (
+                      <ol className="space-y-1 text-sm list-decimal list-inside">
+                        {group.students.map((student) => (
+                          <li key={student.id} className={theme.text}>
+                            {student.fullName || "-"}
+                          </li>
+                        ))}
+                      </ol>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {showDrawer && (
@@ -739,7 +667,7 @@ export default function TeachersPage({ theme, darkMode }) {
                     : "O‘qituvchi qo‘shish"}
                 </h2>
                 <p className={`text-sm mt-1 ${theme.soft}`}>
-                  Bu yerda siz yangi o‘qituvchi qo‘shishingiz mumkin.
+                  Backenddagi teacher maydonlariga mos forma.
                 </p>
               </div>
 
@@ -750,21 +678,9 @@ export default function TeachersPage({ theme, darkMode }) {
 
             <div className="p-4 sm:p-6 space-y-5">
               <div>
-                <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
-                  Telefon raqam
-                </label>
-                <input
-                  type="text"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  placeholder="+998 __ ___ __ __"
-                  className={`w-full rounded-xl border px-4 py-3 outline-none min-w-0 ${theme.input}`}
-                />
-              </div>
-
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
+                <label
+                  className={`block text-sm font-medium mb-2 ${theme.text}`}
+                >
                   Mail
                 </label>
                 <input
@@ -778,7 +694,9 @@ export default function TeachersPage({ theme, darkMode }) {
               </div>
 
               <div>
-                <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
+                <label
+                  className={`block text-sm font-medium mb-2 ${theme.text}`}
+                >
                   O‘qituvchi FIO
                 </label>
                 <input
@@ -792,20 +710,9 @@ export default function TeachersPage({ theme, darkMode }) {
               </div>
 
               <div>
-                <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
-                  Tug‘ilgan sana
-                </label>
-                <input
-                  type="date"
-                  name="birthDate"
-                  value={formData.birthDate}
-                  onChange={handleChange}
-                  className={`w-full rounded-xl border px-4 py-3 outline-none min-w-0 ${theme.input}`}
-                />
-              </div>
-
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
+                <label
+                  className={`block text-sm font-medium mb-2 ${theme.text}`}
+                >
                   Parol
                 </label>
                 <input
@@ -813,72 +720,53 @@ export default function TeachersPage({ theme, darkMode }) {
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  placeholder="Parol kiriting"
+                  placeholder={
+                    editingTeacherId === null
+                      ? "Parol kiriting"
+                      : "Yangi parol (ixtiyoriy)"
+                  }
                   className={`w-full rounded-xl border px-4 py-3 outline-none min-w-0 ${theme.input}`}
                 />
               </div>
 
               <div>
-                <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
-                  Guruhlar
+                <label
+                  className={`block text-sm font-medium mb-2 ${theme.text}`}
+                >
+                  Lavozim
                 </label>
                 <input
                   type="text"
-                  name="group"
-                  value={formData.group}
+                  name="position"
+                  value={formData.position}
                   onChange={handleChange}
-                  placeholder="Masalan: Pre IELTS"
+                  placeholder="Masalan: IELTS Instructor"
                   className={`w-full rounded-xl border px-4 py-3 outline-none min-w-0 ${theme.input}`}
                 />
               </div>
 
               <div>
-                <p className={`block text-sm font-medium mb-2 ${theme.text}`}>
-                  Jinsi
-                </p>
-
-                <div className="flex gap-3 flex-wrap">
-                  {["Erkak", "Ayol"].map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() =>
-                        setFormData((prev) => ({ ...prev, gender: item }))
-                      }
-                      className={`px-4 py-2 rounded-xl border text-sm ${
-                        formData.gender === item
-                          ? "bg-violet-600 text-white border-violet-600"
-                          : darkMode
-                          ? "border-slate-700 text-slate-300"
-                          : "border-slate-200 text-slate-600"
-                      }`}
-                    >
-                      {item}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
-                  Filial
-                </label>
-                <select
-                  name="branch"
-                  value={formData.branch}
-                  onChange={handleChange}
-                  className={`w-full rounded-xl border px-4 py-3 outline-none min-w-0 ${theme.input}`}
+                <label
+                  className={`block text-sm font-medium mb-2 ${theme.text}`}
                 >
-                  {branches.map((branch) => (
-                    <option key={branch} value={branch}>
-                      {branch}
-                    </option>
-                  ))}
-                </select>
+                  Tajriba (yil)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  name="experience"
+                  value={formData.experience}
+                  onChange={handleChange}
+                  placeholder="Masalan: 4"
+                  className={`w-full rounded-xl border px-4 py-3 outline-none min-w-0 ${theme.input}`}
+                />
               </div>
 
               <div>
-                <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
+                <label
+                  className={`block text-sm font-medium mb-2 ${theme.text}`}
+                >
                   Surati
                 </label>
 
@@ -897,9 +785,9 @@ export default function TeachersPage({ theme, darkMode }) {
                     className="hidden"
                   />
 
-                  {formData.photo ? (
+                  {photoPreview ? (
                     <img
-                      src={formData.photo}
+                      src={photoPreview}
                       alt="Preview"
                       className="w-20 h-20 rounded-full object-cover mb-3"
                     />
@@ -933,9 +821,10 @@ export default function TeachersPage({ theme, darkMode }) {
 
               <button
                 onClick={handleSave}
+                disabled={saving}
                 className="px-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-medium"
               >
-                Saqlash
+                {saving ? "Saqlanmoqda..." : "Saqlash"}
               </button>
             </div>
           </div>

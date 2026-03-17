@@ -1,255 +1,228 @@
 import { useEffect, useMemo, useState } from "react";
+import { coursesApi, groupsApi, roomsApi, teachersApi } from "../api/crmApi";
 
-const branches = [
-  "AICoder markazi",
-  "Fizika va Matematika",
-  "4-maktab",
-  "Niner markazi",
-  "SAT,IELTS,AP,CONSULTING centre",
-  "IELTS full mock centre",
-  "IELTS full mock",
-  "IELTS full mock_centre_1",
-  "IELTS,SAT,CONSULTING_n1",
-  "No name",
-  "Debate center",
-  "Academia",
-  "Arxiv",
+const WEEK_DAYS = [
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY",
+  "SUNDAY",
 ];
 
-const courses = [
-  "IELTS",
-  "SAT",
-  "math",
-  "Frontend",
-  "Backend",
-  "SMM",
-  "Foundation",
-];
-
-const rooms = [
-  "1A",
-  "2-xona",
-  "205-xona",
-  "Impact room",
-  "IELTS with Islombek",
-  "99",
-];
-
-const teachersList = [
-  "Islombek Baxromov",
-  "Nurmahmadov Behro'z",
-  "Azimova Mavjuda",
-  "Jinibijoev",
-];
-
-const studentsList = [
-  "Abduvohidova Fotima",
-  "Abduvohidova Zuhra",
-  "Anvarova Madina",
-  "Aziza Abdullayeva",
-  "Bekmirzayev Bekruz",
-  "Elif Shavkatova",
-  "Elyor To'ychiyev",
-  "Farangiz Baratboyeva",
-];
-
-const defaultGroups = [
-  {
-    id: 1,
-    name: "SMM",
-    course: "math",
-    duration: "120 minut",
-    lessonTime: "09:00",
-    addedBy: "Islombek Baxromov",
-    room: "1A",
-    teacher: "Islombek Baxromov",
-    startDate: "2026-02-28",
-    endDate: "2026-05-28",
-    days: ["Dushanba", "Seshanba", "Payshanba", "Shanba"],
-    status: "ACTIVE",
-    branch: "AICoder markazi",
-    archived: false,
-    students: [
-      "Abduvohidova Fotima",
-      "Abduvohidova Zuhra",
-      "Aziza Abdullayeva",
-    ],
-  },
-  {
-    id: 2,
-    name: "IELTS 8",
-    course: "IELTS",
-    duration: "90 minut",
-    lessonTime: "14:00",
-    addedBy: "Islombek Baxromov",
-    room: "IELTS with Islombek",
-    teacher: "O‘qituvchi",
-    startDate: "2026-02-25",
-    endDate: "2026-08-20",
-    days: ["Dushanba", "Chorshanba", "Juma"],
-    status: "ACTIVE",
-    branch: "AICoder markazi",
-    archived: false,
-    students: ["Bekmirzayev Bekruz", "Elif Shavkatova"],
-  },
-  {
-    id: 3,
-    name: "Future Leaders",
-    course: "math",
-    duration: "120 minut",
-    lessonTime: "11:30",
-    addedBy: "Islombek Baxromov",
-    room: "1-xona",
-    teacher: "Azimova Mavjuda",
-    startDate: "2026-02-19",
-    endDate: "2026-05-19",
-    days: ["Dushanba", "Chorshanba", "Juma"],
-    status: "ACTIVE",
-    branch: "AICoder markazi",
-    archived: false,
-    students: ["Farangiz Baratboyeva", "Elyor To'ychiyev"],
-  },
-];
-
-const weekDays = [
-  "Dushanba",
-  "Seshanba",
-  "Chorshanba",
-  "Payshanba",
-  "Juma",
-  "Shanba",
-  "Yakshanba",
-];
-
-const formatDate = (value) => {
-  if (!value) return "-";
-  const [y, m, d] = value.split("-");
-  return `${d}.${m}.${y}`;
-};
-
-const courseBadge = (course, darkMode) => {
-  const base = "inline-flex px-2.5 py-1 rounded-full text-[11px] font-medium";
-  const map = {
-    IELTS: darkMode
-      ? "bg-violet-500/10 text-violet-300"
-      : "bg-violet-50 text-violet-500",
-    SAT: darkMode
-      ? "bg-pink-500/10 text-pink-300"
-      : "bg-pink-50 text-pink-500",
-    math: darkMode
-      ? "bg-fuchsia-500/10 text-fuchsia-300"
-      : "bg-fuchsia-50 text-fuchsia-500",
-    Frontend: darkMode
-      ? "bg-blue-500/10 text-blue-300"
-      : "bg-blue-50 text-blue-500",
-    Backend: darkMode
-      ? "bg-emerald-500/10 text-emerald-300"
-      : "bg-emerald-50 text-emerald-500",
-    SMM: darkMode
-      ? "bg-orange-500/10 text-orange-300"
-      : "bg-orange-50 text-orange-500",
-    Foundation: darkMode
-      ? "bg-slate-500/10 text-slate-300"
-      : "bg-slate-100 text-slate-600",
-  };
-
-  return `${base} ${
-    map[course] ||
-    (darkMode ? "bg-slate-700 text-slate-200" : "bg-slate-100 text-slate-600")
-  }`;
+const dayLabel = {
+  MONDAY: "Dushanba",
+  TUESDAY: "Seshanba",
+  WEDNESDAY: "Chorshanba",
+  THURSDAY: "Payshanba",
+  FRIDAY: "Juma",
+  SATURDAY: "Shanba",
+  SUNDAY: "Yakshanba",
 };
 
 export default function GroupsPage({
   theme,
   darkMode,
   onOpenGroupDetails,
+  currentUser,
 }) {
-  const [activeBranch, setActiveBranch] = useState("AICoder markazi");
-  const [activeTab, setActiveTab] = useState("groups");
+  const [groups, setGroups] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [rooms, setRooms] = useState([]);
+  const [teachers, setTeachers] = useState([]);
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState("GROUPS");
   const [showDrawer, setShowDrawer] = useState(false);
   const [editingGroupId, setEditingGroupId] = useState(null);
 
-  const [groups, setGroups] = useState(() => {
-    const saved = localStorage.getItem("crm_groups");
-    return saved ? JSON.parse(saved) : defaultGroups;
-  });
-
   const [formData, setFormData] = useState({
     name: "",
-    course: "",
-    room: "",
-    days: [],
-    lessonTime: "09:00",
+    courseId: "",
+    roomId: "",
+    teacherId: "",
     startDate: "",
-    endDate: "",
-    teacher: "",
-    students: [],
-    duration: "90 minut",
-    branch: "AICoder markazi",
+    startTime: "09:00",
+    weekDays: [],
+    status: "ACTIVE",
   });
 
-  useEffect(() => {
-    localStorage.setItem("crm_groups", JSON.stringify(groups));
-  }, [groups]);
+  const coursesById = useMemo(
+    () => Object.fromEntries(courses.map((c) => [c.id, c])),
+    [courses],
+  );
+  const roomsById = useMemo(
+    () => Object.fromEntries(rooms.map((r) => [r.id, r])),
+    [rooms],
+  );
+  const teachersById = useMemo(
+    () => Object.fromEntries(teachers.map((t) => [t.id, t])),
+    [teachers],
+  );
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [groupsRes, coursesRes, roomsRes, teachersRes] =
+        await Promise.allSettled([
+          groupsApi.getAll(),
+          coursesApi.getAll(),
+          roomsApi.getAll(),
+          teachersApi.getAll(),
+        ]);
+
+      const groupsList =
+        groupsRes.status === "fulfilled" && Array.isArray(groupsRes.value?.data)
+          ? groupsRes.value.data
+          : [];
+      const isTeacher = currentUser?.role === "TEACHER";
+
+      setGroups(
+        isTeacher
+          ? groupsList.filter(
+              (group) => Number(group.teacherId) === Number(currentUser?.id),
+            )
+          : groupsList,
+      );
+      setCourses(
+        coursesRes.status === "fulfilled" &&
+          Array.isArray(coursesRes.value?.data)
+          ? coursesRes.value.data
+          : [],
+      );
+      setRooms(
+        roomsRes.status === "fulfilled" && Array.isArray(roomsRes.value?.data)
+          ? roomsRes.value.data
+          : [],
+      );
+      setTeachers(
+        teachersRes.status === "fulfilled" &&
+          Array.isArray(teachersRes.value?.data)
+          ? teachersRes.value.data
+          : [],
+      );
+    } catch (error) {
+      setGroups([]);
+      setCourses([]);
+      setRooms([]);
+      setTeachers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (!showDrawer) {
-      setFormData((prev) => ({ ...prev, branch: activeBranch }));
+    loadData();
+  }, [currentUser?.id, currentUser?.role]);
+
+  const tabGroups = useMemo(() => {
+    if (activeTab === "ARCHIVE") {
+      return groups.filter(
+        (group) => group.status && group.status !== "ACTIVE",
+      );
     }
-  }, [activeBranch, showDrawer]);
+
+    return groups.filter((group) => !group.status || group.status === "ACTIVE");
+  }, [groups, activeTab]);
 
   const filteredGroups = useMemo(() => {
-    return groups.filter((group) => {
-      const matchesBranch = group.branch === activeBranch;
-      const matchesTab =
-        activeTab === "groups" ? !group.archived : group.archived;
-      const q = search.trim().toLowerCase();
+    const q = search.trim().toLowerCase();
+    if (!q) return tabGroups;
 
-      const matchesSearch =
-        !q ||
-        group.name.toLowerCase().includes(q) ||
-        group.course.toLowerCase().includes(q) ||
-        group.teacher.toLowerCase().includes(q) ||
-        group.room.toLowerCase().includes(q);
-
-      return matchesBranch && matchesTab && matchesSearch;
+    return tabGroups.filter((group) => {
+      const courseName = coursesById[group.courseId]?.name || "";
+      const teacherName =
+        teachersById[group.teacherId]?.fullName ||
+        (Number(group.teacherId) === Number(currentUser?.id)
+          ? currentUser?.fullName || ""
+          : "");
+      const roomName = roomsById[group.roomId]?.name || "";
+      return (
+        String(group.name || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(courseName).toLowerCase().includes(q) ||
+        String(teacherName).toLowerCase().includes(q) ||
+        String(roomName).toLowerCase().includes(q)
+      );
     });
-  }, [groups, activeBranch, activeTab, search]);
+  }, [tabGroups, search, coursesById, teachersById, roomsById, currentUser]);
 
-  const stats = useMemo(() => {
-    const current = groups.filter(
-      (g) => g.branch === activeBranch && !g.archived
-    );
-    const uniqueTeachers = new Set(
-      current.map((g) => g.teacher).filter(Boolean)
-    );
-    const studentCount = current.reduce(
-      (sum, g) => sum + (g.students?.length || 0),
-      0
-    );
+  const activeGroupsCount = useMemo(
+    () =>
+      groups.filter((group) => !group.status || group.status === "ACTIVE")
+        .length,
+    [groups],
+  );
 
-    return {
-      totalGroups: current.length,
-      totalTeachers: uniqueTeachers.size,
-      totalStudents: studentCount,
-    };
-  }, [groups, activeBranch]);
+  const groupTeachersCount = useMemo(
+    () =>
+      new Set(
+        groups
+          .map((group) => group.teacherId)
+          .filter((teacherId) => teacherId !== undefined && teacherId !== null),
+      ).size,
+    [groups],
+  );
+
+  const totalStudents = useMemo(
+    () =>
+      groups.reduce(
+        (sum, group) =>
+          sum +
+          Number(
+            group.studentsCount ??
+              group.studentCount ??
+              group.students?.length ??
+              0,
+          ),
+        0,
+      ),
+    [groups],
+  );
+
+  const getTeacherName = (group) =>
+    teachersById[group.teacherId]?.fullName ||
+    (Number(group.teacherId) === Number(currentUser?.id)
+      ? currentUser?.fullName || "-"
+      : "O'qituvchi yo'q");
+
+  const getStatusBadgeClass = (status) => {
+    if (status === "FREEZE") {
+      return darkMode
+        ? "bg-amber-500/20 text-amber-300"
+        : "bg-amber-100 text-amber-700";
+    }
+    if (status === "INACTIVE") {
+      return darkMode
+        ? "bg-rose-500/20 text-rose-300"
+        : "bg-rose-100 text-rose-700";
+    }
+    return darkMode
+      ? "bg-emerald-500/20 text-emerald-300"
+      : "bg-emerald-100 text-emerald-700";
+  };
+
+  const getStatusLabel = (status) => {
+    if (status === "FREEZE") return "FREEZE";
+    if (status === "INACTIVE") return "INACTIVE";
+    return "ACTIVE";
+  };
 
   const resetForm = () => {
     setEditingGroupId(null);
     setFormData({
       name: "",
-      course: "",
-      room: "",
-      days: [],
-      lessonTime: "09:00",
+      courseId: "",
+      roomId: "",
+      teacherId: "",
       startDate: "",
-      endDate: "",
-      teacher: "",
-      students: [],
-      duration: "90 minut",
-      branch: activeBranch,
+      startTime: "09:00",
+      weekDays: [],
+      status: "ACTIVE",
     });
   };
 
@@ -261,17 +234,16 @@ export default function GroupsPage({
   const openEditDrawer = (group) => {
     setEditingGroupId(group.id);
     setFormData({
-      name: group.name,
-      course: group.course,
-      room: group.room,
-      days: group.days || [],
-      lessonTime: group.lessonTime,
-      startDate: group.startDate,
-      endDate: group.endDate,
-      teacher: group.teacher,
-      students: group.students || [],
-      duration: group.duration,
-      branch: group.branch,
+      name: group.name || "",
+      courseId: String(group.courseId || ""),
+      roomId: String(group.roomId || ""),
+      teacherId: String(group.teacherId || ""),
+      startDate: group.startDate
+        ? new Date(group.startDate).toISOString().slice(0, 10)
+        : "",
+      startTime: group.startTime || "09:00",
+      weekDays: Array.isArray(group.weekDays) ? group.weekDays : [],
+      status: group.status || "ACTIVE",
     });
     setShowDrawer(true);
   };
@@ -286,689 +258,400 @@ export default function GroupsPage({
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const toggleDay = (day) => {
+  const toggleWeekDay = (day) => {
     setFormData((prev) => ({
       ...prev,
-      days: prev.days.includes(day)
-        ? prev.days.filter((d) => d !== day)
-        : [...prev.days, day],
+      weekDays: prev.weekDays.includes(day)
+        ? prev.weekDays.filter((d) => d !== day)
+        : [...prev.weekDays, day],
     }));
   };
 
-  const toggleStudent = (student) => {
-    setFormData((prev) => ({
-      ...prev,
-      students: prev.students.includes(student)
-        ? prev.students.filter((s) => s !== student)
-        : [...prev.students, student],
-    }));
-  };
-
-  const handleSave = () => {
+  const handleSave = async () => {
     if (
       !formData.name.trim() ||
-      !formData.course ||
-      !formData.room ||
-      !formData.lessonTime ||
+      !formData.courseId ||
+      !formData.roomId ||
+      !formData.teacherId ||
       !formData.startDate ||
-      !formData.endDate
+      !formData.startTime ||
+      !formData.weekDays.length
     ) {
-      alert("Majburiy maydonlarni to‘ldiring");
+      alert("Majburiy maydonlarni to'ldiring");
       return;
     }
 
-    if (editingGroupId !== null) {
-      setGroups((prev) =>
-        prev.map((group) =>
-          group.id === editingGroupId
-            ? {
-                ...group,
-                name: formData.name.trim(),
-                course: formData.course,
-                room: formData.room,
-                days: formData.days,
-                lessonTime: formData.lessonTime,
-                startDate: formData.startDate,
-                endDate: formData.endDate,
-                teacher: formData.teacher || "-",
-                students: formData.students,
-                duration: formData.duration,
-                branch: formData.branch,
-              }
-            : group
-        )
-      );
-    } else {
-      const newGroup = {
-        id: Date.now(),
+    try {
+      setSaving(true);
+      const payload = {
         name: formData.name.trim(),
-        course: formData.course,
-        room: formData.room,
-        days: formData.days,
-        lessonTime: formData.lessonTime,
+        courseId: Number(formData.courseId),
+        roomId: Number(formData.roomId),
+        teacherId: Number(formData.teacherId),
         startDate: formData.startDate,
-        endDate: formData.endDate,
-        teacher: formData.teacher || "-",
-        students: formData.students,
-        duration: formData.duration,
-        branch: formData.branch,
-        addedBy: "Islombek Baxromov",
-        status: "ACTIVE",
-        archived: false,
+        startTime: formData.startTime,
+        weekDays: formData.weekDays,
+        status: formData.status,
       };
 
-      setGroups((prev) => [newGroup, ...prev]);
+      if (editingGroupId !== null) {
+        await groupsApi.update(editingGroupId, payload);
+      } else {
+        await groupsApi.create(payload);
+      }
+
+      await loadData();
+      closeDrawer();
+    } catch (error) {
+      alert(error?.response?.data?.message || "Guruhni saqlashda xato");
+    } finally {
+      setSaving(false);
     }
-
-    closeDrawer();
   };
 
-  const handleDelete = (id) => {
-    setGroups((prev) => prev.filter((group) => group.id !== id));
-  };
-
-  const toggleArchive = (id) => {
-    setGroups((prev) =>
-      prev.map((group) =>
-        group.id === id ? { ...group, archived: !group.archived } : group
-      )
-    );
+  const handleDelete = async (id) => {
+    try {
+      await groupsApi.remove(id);
+      await loadData();
+    } catch (error) {
+      alert(error?.response?.data?.message || "Guruhni o'chirishda xato");
+    }
   };
 
   return (
     <div className="space-y-6 w-full min-w-0 overflow-x-hidden">
-      <div
-        className={`${theme.card} border rounded-2xl p-3 sm:p-4 lg:p-5 shadow-sm overflow-hidden w-full min-w-0`}
-      >
-        <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 mb-5 min-w-0">
-          <h2 className={`text-xl sm:text-2xl font-bold ${theme.text}`}>
-            Guruhlar
-          </h2>
+      <div className={`${theme.card} border rounded-2xl p-5 shadow-sm`}>
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-5">
+          <div>
+            <h2 className={`text-3xl font-bold ${theme.text}`}>Guruhlar</h2>
+            <div className="flex items-center gap-2 mt-3">
+              <button
+                onClick={() => setActiveTab("GROUPS")}
+                className={`px-3 py-1.5 text-sm rounded-lg border ${
+                  activeTab === "GROUPS" ? theme.tabActive : theme.tab
+                }`}
+              >
+                Guruhlar
+              </button>
+              <button
+                onClick={() => setActiveTab("ARCHIVE")}
+                className={`px-3 py-1.5 text-sm rounded-lg border ${
+                  activeTab === "ARCHIVE" ? theme.tabActive : theme.tab
+                }`}
+              >
+                Arxiv
+              </button>
+            </div>
+          </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto">
+          <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
             <input
-              type="text"
-              placeholder="Qidirish..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className={`w-full sm:w-[220px] rounded-xl border px-4 py-3 outline-none min-w-0 ${theme.input}`}
+              placeholder="Qidirish..."
+              className={`rounded-xl border px-4 py-2.5 min-w-56 ${theme.input}`}
             />
-
             <button
               onClick={openAddDrawer}
-              className="bg-violet-600 hover:bg-violet-700 text-white px-5 py-3 rounded-xl font-medium shrink-0"
+              className="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2.5 rounded-xl"
             >
-              + Guruh qo‘shish
+              + Guruh qo'shish
             </button>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 mb-4">
-          <button
-            onClick={() => setActiveTab("groups")}
-            className={`px-4 py-2 rounded-xl text-sm font-medium border ${
-              activeTab === "groups" ? theme.tabActive : theme.tab
-            }`}
-          >
-            Guruhlar
-          </button>
-
-          <button
-            onClick={() => setActiveTab("archive")}
-            className={`px-4 py-2 rounded-xl text-sm font-medium border ${
-              activeTab === "archive" ? theme.tabActive : theme.tab
-            }`}
-          >
-            Arxiv
-          </button>
-        </div>
-
-        <div className="flex flex-wrap gap-2 mb-5">
-          {branches.map((branch) => (
-            <button
-              key={branch}
-              onClick={() => setActiveBranch(branch)}
-              className={`max-w-full break-words px-4 py-2 rounded-xl border text-sm transition ${
-                activeBranch === branch ? theme.tabActive : theme.tab
-              }`}
-            >
-              {branch}
-            </button>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-5">
-          <div className={`${theme.card} border rounded-2xl p-5 shadow-sm`}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+          <div className={`border rounded-2xl p-4 ${theme.card}`}>
             <p className={`text-sm ${theme.soft}`}>Jami guruhlar</p>
-            <h3 className={`text-3xl sm:text-4xl font-bold mt-4 ${theme.text}`}>
-              {stats.totalGroups}
-            </h3>
+            <p className={`mt-2 text-4xl font-bold ${theme.text}`}>
+              {activeGroupsCount}
+            </p>
           </div>
-
-          <div className={`${theme.card} border rounded-2xl p-5 shadow-sm`}>
-            <p className={`text-sm ${theme.soft}`}>O‘qituvchilar</p>
-            <h3 className={`text-3xl sm:text-4xl font-bold mt-4 ${theme.text}`}>
-              {stats.totalTeachers}
-            </h3>
+          <div className={`border rounded-2xl p-4 ${theme.card}`}>
+            <p className={`text-sm ${theme.soft}`}>O'qituvchilar</p>
+            <p className={`mt-2 text-4xl font-bold ${theme.text}`}>
+              {groupTeachersCount}
+            </p>
           </div>
-
-          <div
-            className={`${theme.card} border rounded-2xl p-5 shadow-sm sm:col-span-2 xl:col-span-1`}
-          >
-            <p className={`text-sm ${theme.soft}`}>O‘quvchilar</p>
-            <h3 className={`text-3xl sm:text-4xl font-bold mt-4 ${theme.text}`}>
-              {stats.totalStudents}
-            </h3>
+          <div className={`border rounded-2xl p-4 ${theme.card}`}>
+            <p className={`text-sm ${theme.soft}`}>Talabalar</p>
+            <p className={`mt-2 text-4xl font-bold ${theme.text}`}>
+              {totalStudents}
+            </p>
           </div>
         </div>
 
-        <div className="hidden lg:block rounded-2xl border overflow-hidden">
-          <table className="w-full text-sm table-fixed">
-            <thead className={darkMode ? "bg-slate-900/60" : "bg-slate-50"}>
-              <tr className={theme.soft}>
-                <th className="text-left font-medium px-3 py-4 w-[120px]">
+        <div className="overflow-x-auto rounded-2xl border">
+          <table className="min-w-6xl w-full text-sm">
+            <thead className={darkMode ? "bg-slate-800" : "bg-slate-50"}>
+              <tr>
+                <th className={`text-left px-4 py-3 font-medium ${theme.soft}`}>
                   Status
                 </th>
-                <th className="text-left font-medium px-3 py-4 w-[150px]">
+                <th className={`text-left px-4 py-3 font-medium ${theme.soft}`}>
                   Guruh
                 </th>
-                <th className="text-left font-medium px-3 py-4 w-[110px]">
+                <th className={`text-left px-4 py-3 font-medium ${theme.soft}`}>
                   Kurs
                 </th>
-                <th className="text-left font-medium px-3 py-4 w-[170px]">
+                <th className={`text-left px-4 py-3 font-medium ${theme.soft}`}>
                   Davomiyligi
                 </th>
-                <th className="text-left font-medium px-3 py-4 w-[180px]">
+                <th className={`text-left px-4 py-3 font-medium ${theme.soft}`}>
                   Dars vaqti
                 </th>
-                <th className="text-left font-medium px-3 py-4 w-[150px]">
-                  Kim qo‘shgan
+                <th className={`text-left px-4 py-3 font-medium ${theme.soft}`}>
+                  Kim qo'shgan
                 </th>
-                <th className="text-left font-medium px-3 py-4 w-[110px]">
+                <th className={`text-left px-4 py-3 font-medium ${theme.soft}`}>
                   Xona
                 </th>
-                <th className="text-left font-medium px-3 py-4 w-[150px]">
-                  O‘qituvchi
+                <th className={`text-left px-4 py-3 font-medium ${theme.soft}`}>
+                  O'qituvchi
                 </th>
-                <th className="text-right font-medium px-3 py-4 w-[170px]">
+                <th className={`text-left px-4 py-3 font-medium ${theme.soft}`}>
+                  Talabalar
+                </th>
+                <th
+                  className={`text-right px-4 py-3 font-medium ${theme.soft}`}
+                >
                   Amallar
                 </th>
               </tr>
             </thead>
 
             <tbody>
-              {filteredGroups.length > 0 ? (
-                filteredGroups.map((group) => (
-                  <tr
-                    key={group.id}
-                    className={`border-t transition ${
-                      darkMode
-                        ? "border-slate-800 hover:bg-slate-900/40"
-                        : "border-slate-100 hover:bg-slate-50/70"
-                    }`}
+              {loading ? (
+                <tr>
+                  <td
+                    colSpan={10}
+                    className={`px-4 py-6 text-center ${theme.soft}`}
                   >
-                    <td className="px-3 py-4">
-                      <span className="inline-flex items-center gap-2">
-                        <span className="w-10 h-6 rounded-full bg-violet-500 relative inline-block shrink-0">
-                          <span className="absolute top-1 left-5 w-4 h-4 rounded-full bg-white" />
+                    Yuklanmoqda...
+                  </td>
+                </tr>
+              ) : filteredGroups.length ? (
+                filteredGroups.map((group) => {
+                  const course = coursesById[group.courseId];
+                  const roomName = roomsById[group.roomId]?.name || "-";
+                  const studentsInGroup = Number(
+                    group.studentsCount ??
+                      group.studentCount ??
+                      group.students?.length ??
+                      0,
+                  );
+                  const lessonDays = (group.weekDays || [])
+                    .map((d) => dayLabel[d] || d)
+                    .join(", ");
+
+                  return (
+                    <tr
+                      key={group.id}
+                      className={`border-t ${theme.rowBorder}`}
+                    >
+                      <td className="px-4 py-3">
+                        <span
+                          className={`px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusBadgeClass(
+                            group.status,
+                          )}`}
+                        >
+                          {getStatusLabel(group.status)}
                         </span>
-                        <span className="text-emerald-500 text-xs font-semibold">
-                          ACTIVE
-                        </span>
-                      </span>
-                    </td>
-
-                    <td className="px-3 py-4">
-                      <button
-                        onClick={() => onOpenGroupDetails?.(group)}
-                        className={`font-medium text-left hover:underline truncate block w-full ${theme.text}`}
-                        title={group.name}
-                      >
-                        {group.name}
-                      </button>
-                    </td>
-
-                    <td className="px-3 py-4">
-                      <span className={courseBadge(group.course, darkMode)}>
-                        {group.course}
-                      </span>
-                    </td>
-
-                    <td className={`px-3 py-4 ${theme.text}`}>
-                      <div>{group.duration}</div>
-                      <div className={`text-xs mt-1 ${theme.soft}`}>
-                        {formatDate(group.startDate)} - {formatDate(group.endDate)}
-                      </div>
-                    </td>
-
-                    <td className={`px-3 py-4 ${theme.text}`}>
-                      <div>{group.lessonTime}</div>
-                      <div className={`text-xs mt-1 truncate ${theme.soft}`}>
-                        {group.days?.join(", ")}
-                      </div>
-                    </td>
-
-                    <td
-                      className={`px-3 py-4 truncate ${theme.text}`}
-                      title={group.addedBy}
-                    >
-                      {group.addedBy}
-                    </td>
-
-                    <td
-                      className={`px-3 py-4 truncate ${theme.text}`}
-                      title={group.room}
-                    >
-                      {group.room}
-                    </td>
-
-                    <td
-                      className={`px-3 py-4 truncate ${theme.text}`}
-                      title={group.teacher}
-                    >
-                      {group.teacher}
-                    </td>
-
-                    <td className="px-3 py-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => onOpenGroupDetails?.(group)}
-                          className={`w-9 h-9 rounded-xl border flex items-center justify-center ${
-                            darkMode
-                              ? "border-slate-700 hover:bg-slate-800"
-                              : "border-slate-200 hover:bg-slate-50"
-                          }`}
-                        >
-                          👁️
-                        </button>
-
-                        <button
-                          onClick={() => toggleArchive(group.id)}
-                          className={`w-9 h-9 rounded-xl border flex items-center justify-center ${
-                            darkMode
-                              ? "border-slate-700 hover:bg-slate-800"
-                              : "border-slate-200 hover:bg-slate-50"
-                          }`}
-                        >
-                          📦
-                        </button>
-
-                        <button
-                          onClick={() => openEditDrawer(group)}
-                          className={`w-9 h-9 rounded-xl border flex items-center justify-center ${
-                            darkMode
-                              ? "border-slate-700 hover:bg-slate-800"
-                              : "border-slate-200 hover:bg-slate-50"
-                          }`}
-                        >
-                          ✏️
-                        </button>
-
-                        <button
-                          onClick={() => handleDelete(group.id)}
-                          className={`w-9 h-9 rounded-xl border flex items-center justify-center ${
-                            darkMode
-                              ? "border-slate-700 hover:bg-red-900/30"
-                              : "border-slate-200 hover:bg-red-50"
-                          }`}
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className={`px-4 py-3 font-medium ${theme.text}`}>
+                        {group.name || "-"}
+                      </td>
+                      <td className={`px-4 py-3 ${theme.text}`}>
+                        {course?.name || "-"}
+                      </td>
+                      <td className={`px-4 py-3 ${theme.text}`}>
+                        {course?.durationLesson
+                          ? `${course.durationLesson} minut`
+                          : "-"}
+                      </td>
+                      <td className={`px-4 py-3 ${theme.text}`}>
+                        <p>{group.startTime || "-"}</p>
+                        <p className={`text-xs ${theme.soft}`}>
+                          {lessonDays || "-"}
+                        </p>
+                      </td>
+                      <td className={`px-4 py-3 ${theme.text}`}>
+                        {group.userId ? `ID: ${group.userId}` : "-"}
+                      </td>
+                      <td className={`px-4 py-3 ${theme.text}`}>{roomName}</td>
+                      <td className={`px-4 py-3 ${theme.text}`}>
+                        {getTeacherName(group)}
+                      </td>
+                      <td className={`px-4 py-3 ${theme.text}`}>
+                        {studentsInGroup}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() =>
+                              onOpenGroupDetails?.({
+                                id: group.id,
+                                name: group.name,
+                                course: course?.name || "-",
+                                teacher: getTeacherName(group),
+                                room: roomName,
+                                lessonTime: group.startTime,
+                                days: group.weekDays || [],
+                                duration: course?.durationLesson
+                                  ? `${course.durationLesson} minut`
+                                  : "-",
+                              })
+                            }
+                            className={`px-3 py-1.5 rounded-lg border text-xs ${theme.text}`}
+                          >
+                            Ko'rish
+                          </button>
+                          <button
+                            onClick={() => openEditDrawer(group)}
+                            className={`px-3 py-1.5 rounded-lg border text-xs ${theme.text}`}
+                          >
+                            Tahrirlash
+                          </button>
+                          <button
+                            onClick={() => handleDelete(group.id)}
+                            className="px-3 py-1.5 rounded-lg border text-xs text-red-500"
+                          >
+                            O'chirish
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
-                  <td colSpan={9} className={`text-center py-10 ${theme.soft}`}>
-                    Guruh topilmadi
+                  <td
+                    colSpan={10}
+                    className={`px-4 py-8 text-center ${theme.soft}`}
+                  >
+                    {activeTab === "ARCHIVE"
+                      ? "Arxiv guruhlar topilmadi"
+                      : "Guruhlar topilmadi"}
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:hidden">
-          {filteredGroups.length > 0 ? (
-            filteredGroups.map((group) => (
-              <div
-                key={group.id}
-                className={`rounded-2xl border p-4 ${
-                  darkMode
-                    ? "border-slate-800 bg-slate-900/40"
-                    : "border-slate-200 bg-white"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <button
-                      onClick={() => onOpenGroupDetails?.(group)}
-                      className={`font-semibold text-left hover:underline break-words ${theme.text}`}
-                    >
-                      {group.name}
-                    </button>
-
-                    <div className="mt-2">
-                      <span className={courseBadge(group.course, darkMode)}>
-                        {group.course}
-                      </span>
-                    </div>
-                  </div>
-
-                  <span className="text-emerald-500 text-xs font-semibold shrink-0">
-                    ACTIVE
-                  </span>
-                </div>
-
-                <div className="mt-4 space-y-2 text-sm">
-                  <div className={theme.text}>
-                    <span className="font-medium">Davomiyligi:</span>{" "}
-                    {group.duration}
-                  </div>
-
-                  <div className={theme.text}>
-                    <span className="font-medium">Sana:</span>{" "}
-                    {formatDate(group.startDate)} - {formatDate(group.endDate)}
-                  </div>
-
-                  <div className={theme.text}>
-                    <span className="font-medium">Dars vaqti:</span>{" "}
-                    {group.lessonTime}
-                  </div>
-
-                  <div className={`break-words ${theme.text}`}>
-                    <span className="font-medium">Kunlari:</span>{" "}
-                    {group.days?.join(", ")}
-                  </div>
-
-                  <div className={`break-words ${theme.text}`}>
-                    <span className="font-medium">Kim qo‘shgan:</span>{" "}
-                    {group.addedBy}
-                  </div>
-
-                  <div className={`break-words ${theme.text}`}>
-                    <span className="font-medium">Xona:</span> {group.room}
-                  </div>
-
-                  <div className={`break-words ${theme.text}`}>
-                    <span className="font-medium">O‘qituvchi:</span>{" "}
-                    {group.teacher}
-                  </div>
-                </div>
-
-                <div className="mt-4 flex items-center justify-end gap-2 flex-wrap">
-                  <button
-                    onClick={() => onOpenGroupDetails?.(group)}
-                    className={`w-9 h-9 rounded-xl border flex items-center justify-center ${
-                      darkMode
-                        ? "border-slate-700 hover:bg-slate-800"
-                        : "border-slate-200 hover:bg-slate-50"
-                    }`}
-                  >
-                    👁️
-                  </button>
-
-                  <button
-                    onClick={() => toggleArchive(group.id)}
-                    className={`w-9 h-9 rounded-xl border flex items-center justify-center ${
-                      darkMode
-                        ? "border-slate-700 hover:bg-slate-800"
-                        : "border-slate-200 hover:bg-slate-50"
-                    }`}
-                  >
-                    📦
-                  </button>
-
-                  <button
-                    onClick={() => openEditDrawer(group)}
-                    className={`w-9 h-9 rounded-xl border flex items-center justify-center ${
-                      darkMode
-                        ? "border-slate-700 hover:bg-slate-800"
-                        : "border-slate-200 hover:bg-slate-50"
-                    }`}
-                  >
-                    ✏️
-                  </button>
-
-                  <button
-                    onClick={() => handleDelete(group.id)}
-                    className={`w-9 h-9 rounded-xl border flex items-center justify-center ${
-                      darkMode
-                        ? "border-slate-700 hover:bg-red-900/30"
-                        : "border-slate-200 hover:bg-red-50"
-                    }`}
-                  >
-                    🗑️
-                  </button>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div
-              className={`col-span-full text-center py-10 rounded-2xl border ${
-                darkMode ? "border-slate-800" : "border-slate-200"
-              } ${theme.soft}`}
-            >
-              Guruh topilmadi
-            </div>
-          )}
-        </div>
       </div>
 
       {showDrawer && (
         <div className={`fixed inset-0 z-50 ${theme.overlay}`}>
           <div className="absolute inset-0" onClick={closeDrawer} />
-
           <div
-            className={`absolute inset-y-0 right-0 w-full sm:max-w-[420px] shadow-2xl overflow-y-auto z-10 ${
+            className={`absolute inset-y-0 right-0 w-full sm:max-w-108 overflow-y-auto p-6 ${
               darkMode ? "bg-slate-900" : "bg-white"
             }`}
           >
-            <div
-              className={`p-4 sm:p-6 flex items-start justify-between gap-3 border-b ${
-                darkMode ? "border-slate-800" : "border-slate-200"
-              }`}
-            >
-              <div className="min-w-0">
-                <h2 className={`text-lg sm:text-xl font-bold ${theme.text}`}>
-                  {editingGroupId !== null
-                    ? "Guruhni tahrirlash"
-                    : "Guruh qo‘shish"}
-                </h2>
-                <p className={`text-sm mt-1 ${theme.soft}`}>
-                  Yangi guruh yaratish uchun quyidagi ma’lumotlarni kiriting.
-                </p>
-              </div>
+            <h3 className={`text-xl font-bold mb-4 ${theme.text}`}>
+              {editingGroupId !== null ? "Guruhni tahrirlash" : "Yangi guruh"}
+            </h3>
 
-              <button onClick={closeDrawer} className={`text-xl ${theme.soft}`}>
-                ×
-              </button>
-            </div>
+            <div className="space-y-4">
+              <input
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="Guruh nomi"
+                className={`w-full rounded-xl border px-4 py-3 ${theme.input}`}
+              />
 
-            <div className="p-4 sm:p-6 space-y-5">
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
-                  Guruh nomi
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="Frontend 2024"
-                  className={`w-full rounded-xl border px-4 py-3 outline-none ${theme.input}`}
-                />
-              </div>
+              <select
+                name="teacherId"
+                value={formData.teacherId}
+                onChange={handleChange}
+                className={`w-full rounded-xl border px-4 py-3 ${theme.input}`}
+              >
+                <option value="">O'qituvchi tanlang</option>
+                {teachers.map((teacher) => (
+                  <option key={teacher.id} value={teacher.id}>
+                    {teacher.fullName}
+                  </option>
+                ))}
+              </select>
 
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
-                  Kurs
-                </label>
-                <select
-                  name="course"
-                  value={formData.course}
-                  onChange={handleChange}
-                  className={`w-full rounded-xl border px-4 py-3 outline-none ${theme.input}`}
-                >
-                  <option value="">Kursni tanlang</option>
-                  {courses.map((course) => (
-                    <option key={course} value={course}>
-                      {course}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <select
+                name="courseId"
+                value={formData.courseId}
+                onChange={handleChange}
+                className={`w-full rounded-xl border px-4 py-3 ${theme.input}`}
+              >
+                <option value="">Kurs tanlang</option>
+                {courses.map((course) => (
+                  <option key={course.id} value={course.id}>
+                    {course.name}
+                  </option>
+                ))}
+              </select>
 
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
-                  Xona
-                </label>
-                <select
-                  name="room"
-                  value={formData.room}
-                  onChange={handleChange}
-                  className={`w-full rounded-xl border px-4 py-3 outline-none ${theme.input}`}
-                >
-                  <option value="">Xonani tanlang</option>
-                  {rooms.map((room) => (
-                    <option key={room} value={room}>
-                      {room}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <select
+                name="roomId"
+                value={formData.roomId}
+                onChange={handleChange}
+                className={`w-full rounded-xl border px-4 py-3 ${theme.input}`}
+              >
+                <option value="">Xona tanlang</option>
+                {rooms.map((room) => (
+                  <option key={room.id} value={room.id}>
+                    {room.name}
+                  </option>
+                ))}
+              </select>
+
+              <input
+                type="date"
+                name="startDate"
+                value={formData.startDate}
+                onChange={handleChange}
+                className={`w-full rounded-xl border px-4 py-3 ${theme.input}`}
+              />
+              <input
+                type="time"
+                name="startTime"
+                value={formData.startTime}
+                onChange={handleChange}
+                className={`w-full rounded-xl border px-4 py-3 ${theme.input}`}
+              />
 
               <div>
-                <p className={`block text-sm font-medium mb-2 ${theme.text}`}>
-                  Dars kunlari
-                </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {weekDays.map((day) => (
-                    <label
+                <p className={`text-sm mb-2 ${theme.soft}`}>Dars kunlari</p>
+                <div className="flex flex-wrap gap-2">
+                  {WEEK_DAYS.map((day) => (
+                    <button
                       key={day}
-                      className={`flex items-center gap-2 rounded-xl border px-3 py-2 cursor-pointer ${
-                        darkMode ? "border-slate-700" : "border-slate-200"
+                      type="button"
+                      onClick={() => toggleWeekDay(day)}
+                      className={`px-3 py-1 rounded-full border text-sm ${
+                        formData.weekDays.includes(day)
+                          ? theme.tabActive
+                          : theme.tab
                       }`}
                     >
-                      <input
-                        type="checkbox"
-                        checked={formData.days.includes(day)}
-                        onChange={() => toggleDay(day)}
-                      />
-                      <span className={`${theme.text} break-words`}>{day}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
-                  Dars vaqti
-                </label>
-                <input
-                  type="time"
-                  name="lessonTime"
-                  value={formData.lessonTime}
-                  onChange={handleChange}
-                  className={`w-full rounded-xl border px-4 py-3 outline-none ${theme.input}`}
-                />
-              </div>
-
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
-                  Boshlanish sanasi
-                </label>
-                <input
-                  type="date"
-                  name="startDate"
-                  value={formData.startDate}
-                  onChange={handleChange}
-                  className={`w-full rounded-xl border px-4 py-3 outline-none ${theme.input}`}
-                />
-              </div>
-
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
-                  Tugash sanasi
-                </label>
-                <input
-                  type="date"
-                  name="endDate"
-                  value={formData.endDate}
-                  onChange={handleChange}
-                  className={`w-full rounded-xl border px-4 py-3 outline-none ${theme.input}`}
-                />
-              </div>
-
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
-                  O‘qituvchi
-                </label>
-                <select
-                  name="teacher"
-                  value={formData.teacher}
-                  onChange={handleChange}
-                  className={`w-full rounded-xl border px-4 py-3 outline-none ${theme.input}`}
-                >
-                  <option value="">Tanlang</option>
-                  {teachersList.map((teacher) => (
-                    <option key={teacher} value={teacher}>
-                      {teacher}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <p className={`block text-sm font-medium mb-2 ${theme.text}`}>
-                  Studentlar
-                </p>
-
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                  {studentsList.map((student) => (
-                    <label
-                      key={student}
-                      className={`flex items-center gap-2 rounded-xl border px-3 py-2 cursor-pointer ${
-                        darkMode ? "border-slate-700" : "border-slate-200"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={formData.students.includes(student)}
-                        onChange={() => toggleStudent(student)}
-                      />
-                      <span className={`${theme.text} break-words`}>
-                        {student}
-                      </span>
-                    </label>
+                      {dayLabel[day]}
+                    </button>
                   ))}
                 </div>
               </div>
             </div>
 
-            <div
-              className={`p-4 sm:p-6 flex flex-col sm:flex-row justify-end gap-3 border-t ${
-                darkMode ? "border-slate-800" : "border-slate-200"
-              }`}
-            >
+            <div className="flex justify-end gap-3 mt-6">
               <button
                 onClick={closeDrawer}
-                className={`px-5 py-3 rounded-xl border ${
-                  darkMode
-                    ? "border-slate-700 text-slate-300"
-                    : "border-slate-200 text-slate-600"
-                }`}
+                className="px-4 py-2 border rounded-xl"
               >
                 Bekor qilish
               </button>
-
               <button
+                disabled={saving}
                 onClick={handleSave}
-                className="px-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-medium"
+                className="px-4 py-2 rounded-xl bg-violet-600 text-white disabled:opacity-60"
               >
-                Saqlash
+                {saving ? "Saqlanmoqda..." : "Saqlash"}
               </button>
             </div>
           </div>

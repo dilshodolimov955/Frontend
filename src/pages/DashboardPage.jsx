@@ -5,8 +5,9 @@ import EmployeesPage from "./XodimlarPage";
 import TeachersPage from "./TeachersPage";
 import StudentsPage from "./StudentsPage";
 import GroupsPage from "./GroupsPage";
-import GroupDetailsPage from "./GroupDetailsPage";
-
+import GroupDetailsPage from "./GroupDetrailsPage";
+import { coursesApi, groupsApi, studentsApi } from "../api/crmApi";
+import { getAuthUserFromStorage } from "../utils/authToken";
 
 const menuItems = [
   { id: 1, key: "home", icon: "🏠" },
@@ -26,10 +27,20 @@ const managementItems = [
 ];
 
 const statsData = [
-  { id: 1, key: "activeStudents", value: 49, icon: "🎓" },
-  { id: 2, key: "groups", value: 19, icon: "👥" },
-  { id: 3, key: "frozen", value: 0, icon: "❄️" },
-  { id: 4, key: "archived", value: 17, icon: "🗂️" },
+  { id: 1, key: "activeStudents", icon: "🎓" },
+  { id: 2, key: "groups", icon: "👥" },
+  { id: 3, key: "frozen", icon: "❄️" },
+  { id: 4, key: "archived", icon: "🗂️" },
+];
+
+const WEEKDAY_ENUMS = [
+  "SUNDAY",
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY",
 ];
 
 const defaultCourses = [
@@ -69,7 +80,7 @@ const categories = [
 const translations = {
   uz: {
     brand: "Najot Talim",
-    greeting: "Salom, Dilshodbek!",
+    greeting: "Salom",
     welcome: "Najot Talim platformasiga xush kelibsiz",
     logout: "Chiqish",
     home: "Asosiy",
@@ -90,6 +101,7 @@ const translations = {
     pending: "Kutilmoqda",
     balance: "Qoldiq",
     schedule: "Dars jadvali",
+    noScheduleToday: "Bugun dars yo‘q",
     active: "Faol",
     today: "Bugun",
     teachersText: "Bu yerda o‘qituvchilar ro‘yxati chiqadi.",
@@ -118,7 +130,7 @@ const translations = {
   },
   en: {
     brand: "Najot Talim",
-    greeting: "Hello, Dilshodbek!",
+    greeting: "Hello",
     welcome: "Welcome to Najot Talim platform",
     logout: "Logout",
     home: "Home",
@@ -139,6 +151,7 @@ const translations = {
     pending: "Pending",
     balance: "Balance",
     schedule: "Class schedule",
+    noScheduleToday: "No classes today",
     active: "Active",
     today: "Today",
     teachersText: "Teachers list will appear here.",
@@ -167,7 +180,7 @@ const translations = {
   },
   ru: {
     brand: "Najot Talim",
-    greeting: "Здравствуйте, Дилшодбек!",
+    greeting: "Здравствуйте",
     welcome: "Добро пожаловать на платформу Najot Talim",
     logout: "Выйти",
     home: "Главная",
@@ -188,6 +201,7 @@ const translations = {
     pending: "Ожидается",
     balance: "Остаток",
     schedule: "Расписание занятий",
+    noScheduleToday: "Сегодня занятий нет",
     active: "Активный",
     today: "Сегодня",
     teachersText: "Здесь будет список учителей.",
@@ -277,9 +291,18 @@ export default function DashboardPage({ initialMenu = "home" }) {
   const [showCourseDrawer, setShowCourseDrawer] = useState(false);
   const [editingCourseId, setEditingCourseId] = useState(null);
 
-  const [courses, setCourses] = useState(() => {
-    const saved = localStorage.getItem("crm_courses");
-    return saved ? JSON.parse(saved) : defaultCourses;
+  const [courses, setCourses] = useState([]);
+  const [coursesLoading, setCoursesLoading] = useState(true);
+  const [courseSaving, setCourseSaving] = useState(false);
+  const [dashboardStats, setDashboardStats] = useState({
+    activeStudents: 0,
+    groups: 0,
+    frozen: 0,
+    archived: 0,
+  });
+  const [scheduleData, setScheduleData] = useState({
+    groups: [],
+    coursesById: {},
   });
 
   const [formData, setFormData] = useState({
@@ -294,10 +317,123 @@ export default function DashboardPage({ initialMenu = "home" }) {
   const managementPanelRef = useRef(null);
 
   const t = useMemo(() => translations[language], [language]);
+  const authUser = useMemo(() => getAuthUserFromStorage(), []);
+  const greetingName = useMemo(() => {
+    const baseName =
+      authUser?.fullName || authUser?.email?.split("@")[0] || "Foydalanuvchi";
+    const parts = String(baseName).trim().split(/\s+/).filter(Boolean);
+
+    if (parts.length >= 2) {
+      return `${parts[parts.length - 1]} ${parts.slice(0, -1).join(" ")}`;
+    }
+
+    return baseName;
+  }, [authUser]);
+  const greetingText = `${t.greeting}, ${greetingName}!`;
+
+  const todaySchedule = useMemo(() => {
+    const todayEnum = WEEKDAY_ENUMS[new Date().getDay()];
+
+    const toEndTime = (startTime, durationMinutes) => {
+      if (!startTime || !durationMinutes) return "-";
+
+      const [hour = 0, minute = 0] = String(startTime)
+        .split(":")
+        .map((n) => Number(n));
+      const startMinutes = hour * 60 + minute;
+      const endMinutes = startMinutes + Number(durationMinutes || 0);
+      const endHour = Math.floor(endMinutes / 60) % 24;
+      const endMinute = endMinutes % 60;
+
+      return `${String(endHour).padStart(2, "0")}:${String(endMinute).padStart(2, "0")}`;
+    };
+
+    return (scheduleData.groups || [])
+      .filter(
+        (group) =>
+          Array.isArray(group.weekDays) && group.weekDays.includes(todayEnum),
+      )
+      .map((group) => {
+        const course = scheduleData.coursesById[group.courseId];
+        const duration = Number(course?.durationLesson || 0);
+        return {
+          id: group.id,
+          name: group.name || "-",
+          startTime: group.startTime || "-",
+          endTime: toEndTime(group.startTime, duration),
+        };
+      })
+      .sort((a, b) => String(a.startTime).localeCompare(String(b.startTime)));
+  }, [scheduleData]);
+
+  const loadCourses = async () => {
+    try {
+      setCoursesLoading(true);
+      const result = await coursesApi.getAll();
+      const list = Array.isArray(result?.data) ? result.data : [];
+      setCourses(
+        list.map((course) => ({
+          id: course.id,
+          title: course.name,
+          durationMin: String(course.durationLesson ?? ""),
+          durationMonth: String(course.durationMonth ?? ""),
+          price: String(course.price ?? ""),
+          description: course.description || t.noComment,
+        })),
+      );
+    } catch (error) {
+      setCourses([]);
+    } finally {
+      setCoursesLoading(false);
+    }
+  };
 
   useEffect(() => {
-    localStorage.setItem("crm_courses", JSON.stringify(courses));
-  }, [courses]);
+    loadCourses();
+  }, []);
+
+  useEffect(() => {
+    const loadDashboardStats = async () => {
+      const [studentsRes, groupsRes, coursesRes] = await Promise.allSettled([
+        studentsApi.getAll(),
+        groupsApi.getAll(),
+        coursesApi.getAll(),
+      ]);
+
+      const students =
+        studentsRes.status === "fulfilled" &&
+        Array.isArray(studentsRes.value?.data)
+          ? studentsRes.value.data
+          : [];
+      const groups =
+        groupsRes.status === "fulfilled" && Array.isArray(groupsRes.value?.data)
+          ? groupsRes.value.data
+          : [];
+      const courses =
+        coursesRes.status === "fulfilled" &&
+        Array.isArray(coursesRes.value?.data)
+          ? coursesRes.value.data
+          : [];
+
+      setScheduleData({
+        groups,
+        coursesById: Object.fromEntries(
+          courses.map((course) => [course.id, course]),
+        ),
+      });
+
+      setDashboardStats({
+        activeStudents: students.filter(
+          (student) => student.status === "ACTIVE",
+        ).length,
+        groups: groups.length,
+        frozen: groups.filter((group) => group.status === "FREEZE").length,
+        archived: groups.filter((group) => group.status === "INACTIVE").length,
+      });
+    };
+
+    loadDashboardStats();
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -404,7 +540,7 @@ export default function DashboardPage({ initialMenu = "home" }) {
     }));
   };
 
-  const handleSaveCourse = () => {
+  const handleSaveCourse = async () => {
     if (
       !formData.title.trim() ||
       !formData.durationMin.trim() ||
@@ -414,39 +550,39 @@ export default function DashboardPage({ initialMenu = "home" }) {
       return;
     }
 
-    if (editingCourseId) {
-      setCourses((prev) =>
-        prev.map((course) =>
-          course.id === editingCourseId
-            ? {
-                ...course,
-                title: formData.title,
-                durationMin: formData.durationMin,
-                durationMonth: formData.durationMonth,
-                price: formData.price,
-                description: formData.description || t.noComment,
-              }
-            : course
-        )
-      );
-    } else {
-      const newCourse = {
-        id: Date.now(),
-        title: formData.title,
-        durationMin: formData.durationMin,
-        durationMonth: formData.durationMonth,
+    try {
+      setCourseSaving(true);
+      const payload = {
+        name: formData.title.trim(),
+        durationLesson: Number(formData.durationMin),
+        durationMonth: Number(formData.durationMonth),
         price: formData.price,
         description: formData.description || t.noComment,
       };
-      setCourses((prev) => [newCourse, ...prev]);
-    }
 
-    closeDrawer();
-    resetForm();
+      if (editingCourseId) {
+        await coursesApi.update(editingCourseId, payload);
+      } else {
+        await coursesApi.create(payload);
+      }
+
+      await loadCourses();
+      closeDrawer();
+      resetForm();
+    } catch (error) {
+      alert(error?.response?.data?.message || "Kursni saqlashda xato");
+    } finally {
+      setCourseSaving(false);
+    }
   };
 
-  const handleDeleteCourse = (id) => {
-    setCourses((prev) => prev.filter((course) => course.id !== id));
+  const handleDeleteCourse = async (id) => {
+    try {
+      await coursesApi.remove(id);
+      await loadCourses();
+    } catch (error) {
+      alert(error?.response?.data?.message || "Kursni o'chirishda xato");
+    }
   };
 
   const renderBox = (title, text) => (
@@ -471,85 +607,65 @@ export default function DashboardPage({ initialMenu = "home" }) {
             </button>
           </div>
 
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            <button
-              className={`whitespace-nowrap px-4 py-2 rounded-xl border text-sm ${theme.tabActive}`}
-            >
-              AICoder markazi
-            </button>
-            <button
-              className={`whitespace-nowrap px-4 py-2 rounded-xl border text-sm ${theme.tab}`}
-            >
-              Fizika va Matematika
-            </button>
-            <button
-              className={`whitespace-nowrap px-4 py-2 rounded-xl border text-sm ${theme.tab}`}
-            >
-              4-maktab
-            </button>
-            <button
-              className={`whitespace-nowrap px-4 py-2 rounded-xl border text-sm ${theme.tab}`}
-            >
-              Niner markazi
-            </button>
-            <button
-              className={`whitespace-nowrap px-4 py-2 rounded-xl border text-sm ${theme.tab}`}
-            >
-              IELTS full mock
-            </button>
-          </div>
-
           <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4 mt-5">
-            {courses.map((course) => (
+            {coursesLoading && (
               <div
-                key={course.id}
-                className={`${theme.card} border rounded-2xl p-5 shadow-sm`}
+                className={`${theme.card} border rounded-2xl p-5 shadow-sm ${theme.soft}`}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className={`text-lg font-semibold ${theme.text}`}>
-                      {course.title}
-                    </h3>
-                    <p className={`text-sm mt-1 ${theme.soft}`}>
-                      {course.description}
-                    </p>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleDeleteCourse(course.id)}
-                      className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-red-50"
-                    >
-                      🗑️
-                    </button>
-                    <button
-                      onClick={() => openEditDrawer(course)}
-                      className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-50"
-                    >
-                      ✏️
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2 mt-5">
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs border ${theme.chip}`}
-                  >
-                    {course.durationMin} min
-                  </span>
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs border ${theme.chip}`}
-                  >
-                    {course.durationMonth} oy
-                  </span>
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs border ${theme.chip}`}
-                  >
-                    {Number(course.price).toLocaleString()} so'm
-                  </span>
-                </div>
+                Kurslar yuklanmoqda...
               </div>
-            ))}
+            )}
+            {!coursesLoading &&
+              courses.map((course) => (
+                <div
+                  key={course.id}
+                  className={`${theme.card} border rounded-2xl p-5 shadow-sm`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className={`text-lg font-semibold ${theme.text}`}>
+                        {course.title}
+                      </h3>
+                      <p className={`text-sm mt-1 ${theme.soft}`}>
+                        {course.description}
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleDeleteCourse(course.id)}
+                        className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-red-50"
+                      >
+                        🗑️
+                      </button>
+                      <button
+                        onClick={() => openEditDrawer(course)}
+                        className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-50"
+                      >
+                        ✏️
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 mt-5">
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs border ${theme.chip}`}
+                    >
+                      {course.durationMin} min
+                    </span>
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs border ${theme.chip}`}
+                    >
+                      {course.durationMonth} oy
+                    </span>
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs border ${theme.chip}`}
+                    >
+                      {Number(course.price).toLocaleString()} so'm
+                    </span>
+                  </div>
+                </div>
+              ))}
           </div>
         </div>
 
@@ -580,13 +696,16 @@ export default function DashboardPage({ initialMenu = "home" }) {
 
         {showCourseDrawer && (
           <div className={`fixed inset-0 z-50 ${theme.overlay}`}>
-            <div className="absolute inset-y-0 right-0 w-full max-w-[430px] bg-white shadow-2xl overflow-y-auto">
+            <div className="absolute inset-y-0 right-0 w-full max-w-107.5 bg-white shadow-2xl overflow-y-auto">
               <div className="p-6 border-b border-slate-200 flex items-center justify-between">
                 <h2 className="text-xl font-bold text-slate-900">
                   {editingCourseId ? t.editCourse : t.addCourse}
                 </h2>
 
-                <button onClick={closeDrawer} className="text-slate-500 text-xl">
+                <button
+                  onClick={closeDrawer}
+                  className="text-slate-500 text-xl"
+                >
                   ×
                 </button>
               </div>
@@ -640,7 +759,9 @@ export default function DashboardPage({ initialMenu = "home" }) {
                 />
 
                 <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
+                  <label
+                    className={`block text-sm font-medium mb-2 ${theme.text}`}
+                  >
                     {t.description}
                   </label>
                   <textarea
@@ -664,9 +785,10 @@ export default function DashboardPage({ initialMenu = "home" }) {
 
                 <button
                   onClick={handleSaveCourse}
+                  disabled={courseSaving}
                   className="px-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-medium"
                 >
-                  {t.save}
+                  {courseSaving ? "Saqlanmoqda..." : t.save}
                 </button>
               </div>
             </div>
@@ -678,40 +800,62 @@ export default function DashboardPage({ initialMenu = "home" }) {
 
   const renderManagementContent = () => {
     if (activeManagement === "courses") return renderCoursesSection();
-    if (activeManagement === "rooms") return <RoomsPage theme={theme} darkMode={darkMode} />;
-    if (activeManagement === "employees") return <EmployeesPage theme={theme} darkMode={darkMode} />;
-    if (activeManagement === "teachers") return <TeachersPage theme={theme} darkMode={darkMode} />;
+    if (activeManagement === "rooms")
+      return <RoomsPage theme={theme} darkMode={darkMode} />;
+    if (activeManagement === "employees")
+      return <EmployeesPage theme={theme} darkMode={darkMode} />;
+    if (activeManagement === "teachers")
+      return (
+        <TeachersPage
+          theme={theme}
+          darkMode={darkMode}
+          currentUser={authUser}
+        />
+      );
     if (activeManagement === "faq") return renderBox(t.faq, t.faqText);
     if (activeManagement === "inspection")
       return renderBox(t.inspection, t.inspectionText);
     return null;
   };
 
+  const handleStatCardClick = (key) => {
+    if (key === "activeStudents") {
+      setSelectedGroup(null);
+      setShowManagementPanel(false);
+      setActiveMenu("students");
+      return;
+    }
+
+    if (key === "groups") {
+      setSelectedGroup(null);
+      setShowManagementPanel(false);
+      setActiveMenu("groups");
+    }
+  };
+
   const renderContent = () => {
     if (activeMenu === "home") {
       return (
         <>
-          <div className="mb-8">
-            <h1 className={`text-3xl md:text-4xl font-bold ${theme.text}`}>
-              {t.greeting}
-            </h1>
-            <p className={`mt-2 text-base md:text-lg ${theme.soft}`}>
-              {t.welcome}
-            </p>
-          </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
             {statsData.map((item) => (
-              <div
+              <button
                 key={item.id}
-                className={`${theme.card} border rounded-2xl p-5 shadow-sm`}
+                type="button"
+                onClick={() => handleStatCardClick(item.key)}
+                className={`${theme.card} border rounded-2xl p-5 shadow-sm text-left ${
+                  {
+                    activeStudents: "cursor-pointer hover:shadow-md",
+                    groups: "cursor-pointer hover:shadow-md",
+                  }[item.key] || "cursor-default"
+                }`}
               >
                 <div className="text-3xl mb-3">{item.icon}</div>
                 <p className={`mb-2 text-sm ${theme.soft}`}>{t[item.key]}</p>
                 <h3 className={`text-3xl font-bold ${theme.text}`}>
-                  {item.value}
+                  {dashboardStats[item.key] ?? 0}
                 </h3>
-              </div>
+              </button>
             ))}
           </div>
 
@@ -751,33 +895,32 @@ export default function DashboardPage({ initialMenu = "home" }) {
               </h2>
 
               <div className="space-y-4">
-                <div
-                  className={`flex items-center justify-between rounded-2xl border p-4 ${theme.rowBorder}`}
-                >
-                  <div>
-                    <h3 className={`font-semibold text-lg ${theme.text}`}>
-                      Frontend N45
-                    </h3>
-                    <p className={theme.soft}>08:30 - 10:00</p>
+                {todaySchedule.length === 0 && (
+                  <div
+                    className={`rounded-2xl border p-4 text-sm ${theme.rowBorder} ${theme.soft}`}
+                  >
+                    {t.noScheduleToday}
                   </div>
-                  <span className="px-4 py-2 rounded-full bg-violet-100 text-violet-700 text-sm">
-                    {t.active}
-                  </span>
-                </div>
+                )}
 
-                <div
-                  className={`flex items-center justify-between rounded-2xl border p-4 ${theme.rowBorder}`}
-                >
-                  <div>
-                    <h3 className={`font-semibold text-lg ${theme.text}`}>
-                      Backend N21
-                    </h3>
-                    <p className={theme.soft}>11:00 - 12:30</p>
+                {todaySchedule.map((lesson) => (
+                  <div
+                    key={lesson.id}
+                    className={`flex items-center justify-between rounded-2xl border p-4 ${theme.rowBorder}`}
+                  >
+                    <div>
+                      <h3 className={`font-semibold text-lg ${theme.text}`}>
+                        {lesson.name}
+                      </h3>
+                      <p className={theme.soft}>
+                        {lesson.startTime} - {lesson.endTime}
+                      </p>
+                    </div>
+                    <span className="px-4 py-2 rounded-full bg-emerald-100 text-emerald-700 text-sm">
+                      {t.today}
+                    </span>
                   </div>
-                  <span className="px-4 py-2 rounded-full bg-emerald-100 text-emerald-700 text-sm">
-                    {t.today}
-                  </span>
-                </div>
+                ))}
               </div>
             </div>
           </div>
@@ -785,7 +928,14 @@ export default function DashboardPage({ initialMenu = "home" }) {
       );
     }
 
-    if (activeMenu === "teachers") return <TeachersPage theme={theme} darkMode={darkMode} />;
+    if (activeMenu === "teachers")
+      return (
+        <TeachersPage
+          theme={theme}
+          darkMode={darkMode}
+          currentUser={authUser}
+        />
+      );
 
     if (activeMenu === "groups") {
       if (selectedGroup) {
@@ -803,6 +953,7 @@ export default function DashboardPage({ initialMenu = "home" }) {
         <GroupsPage
           theme={theme}
           darkMode={darkMode}
+          currentUser={authUser}
           onOpenGroupDetails={(group) => {
             setSelectedGroup(group);
             setActiveMenu("groups");
@@ -811,7 +962,17 @@ export default function DashboardPage({ initialMenu = "home" }) {
       );
     }
 
-    if (activeMenu === "students") return <StudentsPage theme={theme} darkMode={darkMode} />;
+    if (activeMenu === "students")
+      return (
+        <StudentsPage
+          theme={theme}
+          darkMode={darkMode}
+          onOpenGroupDetails={(group) => {
+            setSelectedGroup(group);
+            setActiveMenu("groups");
+          }}
+        />
+      );
     if (activeMenu === "management") return renderManagementContent();
 
     return null;
@@ -819,7 +980,9 @@ export default function DashboardPage({ initialMenu = "home" }) {
 
   return (
     <div className={`min-h-screen flex ${theme.app}`}>
-      <aside className={`relative w-[240px] border-r p-4 flex flex-col ${theme.sidebar}`}>
+      <aside
+        className={`relative w-60 border-r p-4 flex flex-col ${theme.sidebar}`}
+      >
         <h1 className="text-2xl font-bold text-violet-600 mb-8">{t.brand}</h1>
 
         <nav className="space-y-2">
@@ -871,7 +1034,7 @@ export default function DashboardPage({ initialMenu = "home" }) {
         {showManagementPanel && (
           <div
             ref={managementPanelRef}
-            className={`absolute top-[72px] left-[220px] w-[210px] rounded-r-2xl rounded-bl-2xl border p-4 shadow-2xl z-30 ${theme.subpanel}`}
+            className={`absolute top-18 left-55 w-52.5 rounded-r-2xl rounded-bl-2xl border p-4 shadow-2xl z-30 ${theme.subpanel}`}
           >
             <div className="flex items-center gap-2 mb-4">
               <button
@@ -880,7 +1043,9 @@ export default function DashboardPage({ initialMenu = "home" }) {
               >
                 ‹
               </button>
-              <h3 className={`text-lg font-semibold ${theme.text}`}>{t.menu}</h3>
+              <h3 className={`text-lg font-semibold ${theme.text}`}>
+                {t.menu}
+              </h3>
             </div>
 
             <div className="space-y-2">
@@ -919,7 +1084,7 @@ export default function DashboardPage({ initialMenu = "home" }) {
           <h1 className="text-2xl font-bold text-violet-600">{t.brand}</h1>
 
           <h2 className={`text-xl md:text-2xl font-semibold ${theme.text}`}>
-            {t.greeting}
+            {greetingText}
           </h2>
 
           <div className="flex items-center gap-3">

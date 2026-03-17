@@ -1,4 +1,6 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import HomeworkDetailPage from "./HomeworkDetailPage";
+import { groupsApi } from "../api/crmApi";
 
 const makeDateHeaders = () => {
   return [
@@ -14,39 +16,72 @@ const makeDateHeaders = () => {
   ];
 };
 
-const defaultStudents = [
-  { id: 1, name: "Abduvohidova Fotima", phone: "+99887645651", active: true },
-  { id: 2, name: "Abduvohidova Zuhra", phone: "+99887645650", active: true },
-  { id: 3, name: "Anvarova Madina", phone: "+998931450688", active: true },
-  { id: 4, name: "Aziza Abdullayeva", phone: "+998973293141", active: true },
-  { id: 5, name: "Bekmirzayev Bekruz", phone: "+998935640914", active: true },
-  { id: 6, name: "Elif Shavkatova", phone: "+998945778900", active: true },
-  { id: 7, name: "Elyor To'ychiyev", phone: "+998973292208", active: true },
-];
+const defaultStudents = [];
 
-const defaultTeachers = [
-  { id: 1, name: "Jinibijoev", phone: "+998912879856" },
-];
+const defaultTeachers = [{ id: 1, name: "Jinibijoev", phone: "+998912879856" }];
 
 const defaultHomeworkStudents = [
-  { id: 1, name: "Sardor Xushvaqtov Bahodir o'g'li", sentAt: "11 Mart, 2026 14:50", status: "kutayotgan" },
-  { id: 2, name: "Jamoliddin Maxammadibrohimov Xusniddin o'g'li", sentAt: "10 Mart, 2026 17:22", status: "kutayotgan" },
-  { id: 3, name: "Abrorbek Soatmurotov Alimboy o'g'li", sentAt: "10 Mart, 2026 13:36", status: "kutayotgan" },
-  { id: 4, name: "Dilshod Olimov Farhod o'g'li", sentAt: "10 Mart, 2026 15:39", status: "kutayotgan" },
-  { id: 5, name: "Bunyodbek G'ulomjonov", sentAt: "11 Mart, 2026 10:16", status: "kutayotgan" },
-  { id: 6, name: "Axrorbek Mengilov", sentAt: "10 Mart, 2026 19:53", status: "kutayotgan" },
-  { id: 7, name: "Sirojiddin Oyosboyev", sentAt: "10 Mart, 2026 13:54", status: "kutayotgan" },
-  { id: 8, name: "Olimjon Murtozoyev", sentAt: "11 Mart, 2026 09:25", status: "kutayotgan" },
-  { id: 9, name: "Sabina Norbekova", sentAt: "10 Mart, 2026 17:33", status: "kutayotgan" },
-  { id: 10, name: "Qo'chqorboyev Abbos Abulqosim o'g'li", sentAt: "10 Mart, 2026 19:52", status: "kutayotgan" },
-  { id: 11, name: "Murodjon Soliyev", sentAt: "10 Mart, 2026 20:11", status: "kutayotgan" },
-  { id: 12, name: "Azimjon Yoqubov", sentAt: "10 Mart, 2026 18:12", status: "bajarilmagan" },
-  { id: 13, name: "Shahzod Ergashev", sentAt: "10 Mart, 2026 18:44", status: "bajarilmagan" },
-  { id: 14, name: "Muhammadali Qodirov", sentAt: "10 Mart, 2026 19:00", status: "bajarilmagan" },
-  { id: 15, name: "Abbosbek Nematov", sentAt: "10 Mart, 2026 21:05", status: "bajarilmagan" },
-  { id: 16, name: "Sarvarbek Karimov", sentAt: "10 Mart, 2026 16:21", status: "qaytarilgan" },
-  { id: 17, name: "Bekzod Sobirov", sentAt: "10 Mart, 2026 12:21", status: "qabul" },
-  { id: 18, name: "Javohir Xudoyberdiyev", sentAt: "10 Mart, 2026 11:41", status: "qabul" },
+  {
+    id: 1,
+    name: "Sardor Xushvaqtov Bahodir o'g'li",
+    sentAt: "11 Mart, 2026 14:50",
+    status: "kutayotgan",
+  },
+  {
+    id: 2,
+    name: "Jamoliddin Maxammadibrohimov Xusniddin o'g'li",
+    sentAt: "10 Mart, 2026 17:22",
+    status: "kutayotgan",
+  },
+  {
+    id: 3,
+    name: "Abrorbek Soatmurotov Alimboy o'g'li",
+    sentAt: "10 Mart, 2026 13:36",
+    status: "kutayotgan",
+  },
+  {
+    id: 4,
+    name: "Dilshod Olimov Farhod o'g'li",
+    sentAt: "10 Mart, 2026 15:39",
+    status: "kutayotgan",
+  },
+  {
+    id: 5,
+    name: "Bunyodbek G'ulomjonov",
+    sentAt: "11 Mart, 2026 10:16",
+    status: "kutayotgan",
+  },
+  {
+    id: 6,
+    name: "Axrorbek Mengilov",
+    sentAt: "10 Mart, 2026 19:53",
+    status: "kutayotgan",
+  },
+  {
+    id: 7,
+    name: "Sirojiddin Oyosboyev",
+    sentAt: "10 Mart, 2026 13:54",
+    status: "qabul",
+  },
+  {
+    id: 8,
+    name: "Olimjon Murtozoyev",
+    sentAt: "11 Mart, 2026 09:25",
+    status: "qabul",
+  },
+  {
+    id: 9,
+    name: "Sabina Norbekova",
+    sentAt: "10 Mart, 2026 17:33",
+    status: "qaytarilgan",
+  },
+  {
+    id: 10,
+    name: "Qo'chqorboyev Abbos Abulqosim o'g'li",
+    sentAt: "10 Mart, 2026 19:52",
+    status: "bajarilmagan",
+  },
+  { id: 11, name: "Murodjon Soliyev", sentAt: "-", status: "bajarilmagan" },
 ];
 
 const defaultHomeworks = [
@@ -84,18 +119,6 @@ const defaultHomeworks = [
     deadline: "26 Fev, 2026 15:10",
     lessonDate: "25 Fev, 2026",
     description: "Nested route va NavLink",
-    studentStatuses: defaultHomeworkStudents,
-  },
-  {
-    id: 4,
-    title: "React hooks",
-    total: 15,
-    submitted: 0,
-    checked: 2,
-    assignedAt: "18 Fev, 2026 20:53",
-    deadline: "19 Fev, 2026 12:53",
-    lessonDate: "18 Fev, 2026",
-    description: "React hooks practice",
     studentStatuses: defaultHomeworkStudents,
   },
 ];
@@ -185,11 +208,16 @@ export default function GroupDetailsPage({
       time: "09:00",
       duration: "90 minut",
       room: "2-xona",
-    }
+    },
   );
 
-  const [students, setStudents] = useState(defaultStudents);
-  const [teachers, setTeachers] = useState(defaultTeachers);
+  const [students, setStudents] = useState(group?.students || defaultStudents);
+  const [studentsLoading, setStudentsLoading] = useState(false);
+  const [teachers, setTeachers] = useState(
+    group?.teacher
+      ? [{ id: group?.teacherId || 1, name: group.teacher, phone: "-" }]
+      : defaultTeachers,
+  );
   const [homeworks, setHomeworks] = useState(defaultHomeworks);
   const [videos, setVideos] = useState(defaultVideos);
 
@@ -205,6 +233,50 @@ export default function GroupDetailsPage({
     result[2]["Fri-20"] = "Bor";
     return result;
   });
+
+  useEffect(() => {
+    if (!group?.id) return;
+
+    const loadStudents = async () => {
+      try {
+        setStudentsLoading(true);
+        const result = await groupsApi.getStudentsByGroup(group.id);
+        const list = Array.isArray(result?.data) ? result.data : [];
+        setStudents(
+          list.map((student) => ({
+            id: student.id,
+            name: student.fullName,
+            phone: student.email || "-",
+            active: true,
+          })),
+        );
+      } catch {
+        setStudents([]);
+      } finally {
+        setStudentsLoading(false);
+      }
+    };
+
+    loadStudents();
+  }, [group?.id]);
+
+  useEffect(() => {
+    setAttendance((prev) => {
+      const next = {};
+
+      students.forEach((student) => {
+        next[student.id] = prev[student.id] || {};
+        dateHeaders.forEach((d) => {
+          const key = `${d.day}-${d.num}`;
+          if (!(key in next[student.id])) {
+            next[student.id][key] = "";
+          }
+        });
+      });
+
+      return next;
+    });
+  }, [students, dateHeaders]);
 
   const [activeMainTab, setActiveMainTab] = useState("malumotlar");
   const [activeLessonTab, setActiveLessonTab] = useState("uyga-vazifa");
@@ -263,15 +335,15 @@ export default function GroupDetailsPage({
     active
       ? "pb-3 text-sm font-medium border-b-2 border-emerald-500 text-emerald-600"
       : darkMode
-      ? "pb-3 text-sm font-medium border-b-2 border-transparent text-slate-400"
-      : "pb-3 text-sm font-medium border-b-2 border-transparent text-slate-500";
+        ? "pb-3 text-sm font-medium border-b-2 border-transparent text-slate-400"
+        : "pb-3 text-sm font-medium border-b-2 border-transparent text-slate-500";
 
   const subTabClass = (active) =>
     active
       ? "px-4 py-2 rounded-xl bg-white border border-emerald-300 text-slate-900 text-sm font-medium shadow-sm"
       : darkMode
-      ? "px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 text-sm font-medium"
-      : "px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 text-sm font-medium";
+        ? "px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 text-sm font-medium"
+        : "px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 text-sm font-medium";
 
   const toggleAttendance = (studentId, key) => {
     setAttendance((prev) => {
@@ -288,7 +360,8 @@ export default function GroupDetailsPage({
   };
 
   const attendancePill = (value) => {
-    if (value === "Bor") return "bg-emerald-500 text-white border border-emerald-500";
+    if (value === "Bor")
+      return "bg-emerald-500 text-white border border-emerald-500";
     if (value === "Yo‘q") return "bg-red-500 text-white border border-red-500";
     return darkMode
       ? "border border-slate-700 bg-slate-900 text-slate-300"
@@ -457,18 +530,25 @@ export default function GroupDetailsPage({
 
   const filteredHomeworkStudents =
     selectedHomework?.studentStatuses?.filter(
-      (item) => item.status === homeworkDetailTab
+      (item) => item.status === homeworkDetailTab,
     ) || [];
 
   const getCountByStatus = (status) =>
-    selectedHomework?.studentStatuses?.filter((item) => item.status === status).length || 0;
+    selectedHomework?.studentStatuses?.filter((item) => item.status === status)
+      .length || 0;
 
   if (groupDeleted) {
     return (
       <div className="h-[100dvh] w-full flex items-center justify-center p-4 overflow-hidden">
-        <div className={`${theme.card} border rounded-2xl p-6 text-center shadow-sm max-w-md w-full`}>
-          <h2 className={`text-xl font-bold mb-2 ${theme.text}`}>Guruh o‘chirildi</h2>
-          <p className={`${theme.soft} mb-4`}>Bu guruh muvaffaqiyatli o‘chirildi.</p>
+        <div
+          className={`${theme.card} border rounded-2xl p-6 text-center shadow-sm max-w-md w-full`}
+        >
+          <h2 className={`text-xl font-bold mb-2 ${theme.text}`}>
+            Guruh o‘chirildi
+          </h2>
+          <p className={`${theme.soft} mb-4`}>
+            Bu guruh muvaffaqiyatli o‘chirildi.
+          </p>
           <button onClick={onBack} className={actionBtnClass}>
             ← Orqaga qaytish
           </button>
@@ -488,7 +568,9 @@ export default function GroupDetailsPage({
               </button>
 
               <div className="min-w-0">
-                <h2 className={`text-lg sm:text-xl font-bold truncate ${theme.text}`}>
+                <h2
+                  className={`text-lg sm:text-xl font-bold truncate ${theme.text}`}
+                >
                   {groupData.name}
                 </h2>
                 <p className={`text-xs sm:text-sm mt-1 truncate ${theme.soft}`}>
@@ -525,7 +607,9 @@ export default function GroupDetailsPage({
             </div>
           </div>
 
-          <div className={`${theme.card} border rounded-2xl shadow-sm px-4 pt-4 shrink-0`}>
+          <div
+            className={`${theme.card} border rounded-2xl shadow-sm px-4 pt-4 shrink-0`}
+          >
             <div className="flex items-center gap-6 sm:gap-8 overflow-x-auto">
               <button
                 onClick={() => {
@@ -554,11 +638,15 @@ export default function GroupDetailsPage({
               <div className="min-h-0 overflow-hidden flex flex-col gap-3">
                 <div className={infoCardClass}>
                   <div className="flex items-center justify-between gap-3 mb-3 min-w-0">
-                    <h3 className={`text-sm sm:text-base font-semibold ${theme.text}`}>
+                    <h3
+                      className={`text-sm sm:text-base font-semibold ${theme.text}`}
+                    >
                       Ma&apos;lumotlar
                     </h3>
 
-                    <span className={`px-3 py-1 rounded-full text-xs border shrink-0 ${theme.chip}`}>
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs border shrink-0 ${theme.chip}`}
+                    >
                       {groupData.course}
                     </span>
                   </div>
@@ -566,7 +654,9 @@ export default function GroupDetailsPage({
                   <div className="space-y-2 text-xs sm:text-sm min-w-0">
                     <div>
                       <p className={theme.soft}>Kurs nomi</p>
-                      <p className={`font-medium break-words ${theme.text}`}>{groupData.course}</p>
+                      <p className={`font-medium break-words ${theme.text}`}>
+                        {groupData.course}
+                      </p>
                     </div>
 
                     <div>
@@ -607,7 +697,9 @@ export default function GroupDetailsPage({
                 </div>
 
                 <div className={infoCardClass}>
-                  <h3 className={`text-sm sm:text-base font-semibold mb-3 ${theme.text}`}>
+                  <h3
+                    className={`text-sm sm:text-base font-semibold mb-3 ${theme.text}`}
+                  >
                     O‘qituvchilar
                   </h3>
 
@@ -620,17 +712,23 @@ export default function GroupDetailsPage({
                         <div className="flex items-center gap-3 min-w-0">
                           <div
                             className={`w-8 h-8 rounded-full flex items-center justify-center font-bold shrink-0 ${
-                              darkMode ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"
+                              darkMode
+                                ? "bg-slate-800 text-slate-200"
+                                : "bg-slate-100 text-slate-700"
                             }`}
                           >
                             {getInitial(teacher.name)}
                           </div>
 
                           <div className="min-w-0">
-                            <p className={`text-sm font-medium truncate ${theme.text}`}>
+                            <p
+                              className={`text-sm font-medium truncate ${theme.text}`}
+                            >
                               {teacher.name}
                             </p>
-                            <p className={`text-xs truncate ${theme.soft}`}>{teacher.phone}</p>
+                            <p className={`text-xs truncate ${theme.soft}`}>
+                              {teacher.phone}
+                            </p>
                           </div>
                         </div>
 
@@ -646,46 +744,64 @@ export default function GroupDetailsPage({
                 </div>
 
                 <div className={`${infoCardClass} flex-1 overflow-hidden`}>
-                  <h3 className={`text-sm sm:text-base font-semibold mb-3 ${theme.text}`}>
+                  <h3
+                    className={`text-sm sm:text-base font-semibold mb-3 ${theme.text}`}
+                  >
                     Talabalar
                   </h3>
 
                   <div className="h-full overflow-y-auto pr-1 space-y-2">
-                    {students.map((student) => (
-                      <div
-                        key={student.id}
-                        className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 min-w-0 ${innerBorderClass}`}
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                              darkMode ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-600"
-                            }`}
-                          >
-                            {getInitial(student.name)}
-                          </div>
-
-                          <div className="min-w-0">
-                            <p className={`text-sm font-medium truncate ${theme.text}`}>
-                              {student.name}
-                            </p>
-                            <p className={`text-xs truncate ${theme.soft}`}>{student.phone}</p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="px-2 py-1 rounded-full text-[10px] bg-emerald-100 text-emerald-700">
-                            Faol
-                          </span>
-                          <button
-                            onClick={() => deleteStudent(student.id)}
-                            className="text-red-500 text-xs"
-                          >
-                            O‘chirish
-                          </button>
-                        </div>
+                    {studentsLoading ? (
+                      <div className={`text-sm ${theme.soft}`}>
+                        Yuklanmoqda...
                       </div>
-                    ))}
+                    ) : students.length === 0 ? (
+                      <div className={`text-sm ${theme.soft}`}>
+                        Talabalar topilmadi
+                      </div>
+                    ) : (
+                      students.map((student) => (
+                        <div
+                          key={student.id}
+                          className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 min-w-0 ${innerBorderClass}`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                                darkMode
+                                  ? "bg-slate-800 text-slate-200"
+                                  : "bg-slate-100 text-slate-600"
+                              }`}
+                            >
+                              {getInitial(student.name)}
+                            </div>
+
+                            <div className="min-w-0">
+                              <p
+                                className={`text-sm font-medium truncate ${theme.text}`}
+                              >
+                                {student.name}
+                              </p>
+                              <p className={`text-xs truncate ${theme.soft}`}>
+                                {student.phone}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="px-2 py-1 rounded-full text-[10px] bg-emerald-100 text-emerald-700">
+                              Faol
+                            </span>
+                            <button
+                              onClick={() => deleteStudent(student.id)}
+                              className="text-red-500 text-xs"
+                            >
+                              O‘chirish
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               </div>
@@ -696,10 +812,14 @@ export default function GroupDetailsPage({
                 <div
                   className={`shrink-0 px-4 py-3 flex items-center justify-between gap-3 border-b min-w-0 ${innerBorderClass}`}
                 >
-                  <h3 className={`text-sm sm:text-base font-semibold ${theme.text}`}>
+                  <h3
+                    className={`text-sm sm:text-base font-semibold ${theme.text}`}
+                  >
                     Davomat
                   </h3>
-                  <div className={`text-xs sm:text-sm font-medium ${theme.text}`}>
+                  <div
+                    className={`text-xs sm:text-sm font-medium ${theme.text}`}
+                  >
                     2026 Fevral
                   </div>
                 </div>
@@ -711,7 +831,9 @@ export default function GroupDetailsPage({
                         className={`${darkMode ? "bg-slate-800" : "bg-slate-50"} sticky top-0 z-10`}
                       >
                         <tr>
-                          <th className={`text-left px-3 py-3 w-[260px] ${theme.text}`}>
+                          <th
+                            className={`text-left px-3 py-3 w-[260px] ${theme.text}`}
+                          >
                             Nomi
                           </th>
 
@@ -721,7 +843,9 @@ export default function GroupDetailsPage({
                               className={`px-1 py-3 text-center ${theme.text}`}
                             >
                               <div className="text-[10px]">{item.day}</div>
-                              <div className="text-xs font-semibold">{item.num}</div>
+                              <div className="text-xs font-semibold">
+                                {item.num}
+                              </div>
                             </th>
                           ))}
                         </tr>
@@ -732,7 +856,9 @@ export default function GroupDetailsPage({
                           <tr
                             key={student.id}
                             className={`border-t ${theme.rowBorder} ${
-                              darkMode ? "hover:bg-slate-800/40" : "hover:bg-slate-50"
+                              darkMode
+                                ? "hover:bg-slate-800/40"
+                                : "hover:bg-slate-50"
                             }`}
                           >
                             <td className="px-3 py-2">
@@ -748,10 +874,14 @@ export default function GroupDetailsPage({
                                 </div>
 
                                 <div className="min-w-0">
-                                  <p className={`font-medium truncate ${theme.text}`}>
+                                  <p
+                                    className={`font-medium truncate ${theme.text}`}
+                                  >
                                     {student.name}
                                   </p>
-                                  <p className={`text-xs ${theme.soft}`}>Faol</p>
+                                  <p className={`text-xs ${theme.soft}`}>
+                                    Faol
+                                  </p>
                                 </div>
                               </div>
                             </td>
@@ -763,7 +893,9 @@ export default function GroupDetailsPage({
                               return (
                                 <td key={key} className="px-1 py-2 text-center">
                                   <button
-                                    onClick={() => toggleAttendance(student.id, key)}
+                                    onClick={() =>
+                                      toggleAttendance(student.id, key)
+                                    }
                                     className={`w-full max-w-[64px] h-10 rounded-full text-[11px] font-medium transition ${attendancePill(value)}`}
                                   >
                                     {value || ""}
@@ -812,7 +944,9 @@ export default function GroupDetailsPage({
                             return (
                               <button
                                 key={key}
-                                onClick={() => toggleAttendance(student.id, key)}
+                                onClick={() =>
+                                  toggleAttendance(student.id, key)
+                                }
                                 className={`rounded-xl px-2 py-2 text-xs font-medium transition ${attendancePill(value)}`}
                               >
                                 <div>{item.day}</div>
@@ -831,8 +965,12 @@ export default function GroupDetailsPage({
           )}
 
           {activeMainTab === "guruh-darsliklari" && lessonPage === "list" && (
-            <div className={`${theme.card} border rounded-2xl shadow-sm flex-1 min-h-0 overflow-hidden`}>
-              <div className={`px-4 py-3 border-b ${innerBorderClass} flex items-center justify-between gap-3 flex-wrap`}>
+            <div
+              className={`${theme.card} border rounded-2xl shadow-sm flex-1 min-h-0 overflow-hidden`}
+            >
+              <div
+                className={`px-4 py-3 border-b ${innerBorderClass} flex items-center justify-between gap-3 flex-wrap`}
+              >
                 <div className="flex items-center gap-3 overflow-x-auto">
                   <button
                     onClick={() => setActiveLessonTab("uyga-vazifa")}
@@ -869,18 +1007,54 @@ export default function GroupDetailsPage({
               <div className="flex-1 min-h-0 overflow-auto p-4">
                 {activeLessonTab === "uyga-vazifa" && (
                   <div className="overflow-auto">
-                    <table className="w-full min-w-[1050px] text-sm">
-                      <thead className={darkMode ? "bg-slate-800" : "bg-slate-50"}>
+                    <table className="w-full min-w-[980px] text-sm">
+                      <thead
+                        className={darkMode ? "bg-slate-800" : "bg-slate-50"}
+                      >
                         <tr className={`border-b ${innerBorderClass}`}>
-                          <th className={`text-left px-3 py-3 w-[50px] ${theme.text}`}>#</th>
-                          <th className={`text-left px-3 py-3 ${theme.text}`}>Mavzu</th>
-                          <th className={`text-center px-3 py-3 w-[90px] ${theme.text}`}>👤</th>
-                          <th className={`text-center px-3 py-3 w-[90px] ${theme.text}`}>🟡</th>
-                          <th className={`text-center px-3 py-3 w-[90px] ${theme.text}`}>🟢</th>
-                          <th className={`text-left px-3 py-3 w-[180px] ${theme.text}`}>Berilgan vaqt</th>
-                          <th className={`text-left px-3 py-3 w-[180px] ${theme.text}`}>Tugash vaqti</th>
-                          <th className={`text-left px-3 py-3 w-[150px] ${theme.text}`}>Dars sanasi</th>
-                          <th className={`text-center px-3 py-3 w-[70px] ${theme.text}`}></th>
+                          <th
+                            className={`text-left px-3 py-3 w-[50px] ${theme.text}`}
+                          >
+                            #
+                          </th>
+                          <th className={`text-left px-3 py-3 ${theme.text}`}>
+                            Mavzu
+                          </th>
+                          <th
+                            className={`text-center px-3 py-3 w-[90px] ${theme.text}`}
+                          >
+                            👤
+                          </th>
+                          <th
+                            className={`text-center px-3 py-3 w-[90px] ${theme.text}`}
+                          >
+                            🟡
+                          </th>
+                          <th
+                            className={`text-center px-3 py-3 w-[90px] ${theme.text}`}
+                          >
+                            🟢
+                          </th>
+                          <th
+                            className={`text-left px-3 py-3 w-[180px] ${theme.text}`}
+                          >
+                            Berilgan vaqt
+                          </th>
+                          <th
+                            className={`text-left px-3 py-3 w-[180px] ${theme.text}`}
+                          >
+                            Tugash vaqti
+                          </th>
+                          <th
+                            className={`text-left px-3 py-3 w-[150px] ${theme.text}`}
+                          >
+                            Dars sanasi
+                          </th>
+                          <th
+                            className={`text-center px-3 py-3 w-[90px] ${theme.text}`}
+                          >
+                            Amal
+                          </th>
                         </tr>
                       </thead>
 
@@ -889,10 +1063,14 @@ export default function GroupDetailsPage({
                           <tr
                             key={item.id}
                             className={`border-b ${theme.rowBorder} ${
-                              darkMode ? "hover:bg-slate-800/40" : "hover:bg-slate-50"
+                              darkMode
+                                ? "hover:bg-slate-800/40"
+                                : "hover:bg-slate-50"
                             }`}
                           >
-                            <td className={`px-3 py-3 ${theme.text}`}>{index + 1}</td>
+                            <td className={`px-3 py-3 ${theme.text}`}>
+                              {index + 1}
+                            </td>
 
                             <td className="px-3 py-3">
                               <button
@@ -901,31 +1079,44 @@ export default function GroupDetailsPage({
                                   index < 3
                                     ? "bg-[#ff7b57] text-white"
                                     : darkMode
-                                    ? "bg-slate-800 text-slate-200"
-                                    : "bg-slate-100 text-slate-800"
+                                      ? "bg-slate-800 text-slate-200"
+                                      : "bg-slate-100 text-slate-800"
                                 }`}
                               >
                                 {item.title}
                               </button>
                             </td>
 
-                            <td className={`px-3 py-3 text-center ${theme.text}`}>{item.total}</td>
-                            <td className={`px-3 py-3 text-center ${theme.text}`}>{item.submitted}</td>
-                            <td className={`px-3 py-3 text-center ${theme.text}`}>{item.checked}</td>
-                            <td className={`px-3 py-3 ${theme.text}`}>{item.assignedAt}</td>
-                            <td className={`px-3 py-3 ${theme.text}`}>{item.deadline}</td>
-                            <td className={`px-3 py-3 ${theme.text}`}>{item.lessonDate}</td>
-
+                            <td
+                              className={`px-3 py-3 text-center ${theme.text}`}
+                            >
+                              {item.total}
+                            </td>
+                            <td
+                              className={`px-3 py-3 text-center ${theme.text}`}
+                            >
+                              {item.submitted}
+                            </td>
+                            <td
+                              className={`px-3 py-3 text-center ${theme.text}`}
+                            >
+                              {item.checked}
+                            </td>
+                            <td className={`px-3 py-3 ${theme.text}`}>
+                              {item.assignedAt}
+                            </td>
+                            <td className={`px-3 py-3 ${theme.text}`}>
+                              {item.deadline}
+                            </td>
+                            <td className={`px-3 py-3 ${theme.text}`}>
+                              {item.lessonDate}
+                            </td>
                             <td className="px-3 py-3 text-center">
                               <button
-                                onClick={() => openHomeworkDetail(item)}
-                                className={`w-8 h-8 rounded-lg flex items-center justify-center mx-auto ${
-                                  darkMode
-                                    ? "hover:bg-slate-800 text-slate-300"
-                                    : "hover:bg-slate-100 text-slate-500"
-                                }`}
+                                onClick={() => deleteHomework(item.id)}
+                                className="text-red-500 text-xs"
                               >
-                                ⋮
+                                O‘chirish
                               </button>
                             </td>
                           </tr>
@@ -933,7 +1124,10 @@ export default function GroupDetailsPage({
 
                         {homeworks.length === 0 && (
                           <tr>
-                            <td colSpan={9} className={`px-3 py-10 text-center ${theme.soft}`}>
+                            <td
+                              colSpan={9}
+                              className={`px-3 py-10 text-center ${theme.soft}`}
+                            >
                               Uyga vazifalar hozircha yo‘q
                             </td>
                           </tr>
@@ -946,15 +1140,31 @@ export default function GroupDetailsPage({
                 {activeLessonTab === "videolar" && (
                   <div className="overflow-auto">
                     <table className="w-full min-w-[1100px] text-sm">
-                      <thead className={darkMode ? "bg-slate-800" : "bg-slate-50"}>
+                      <thead
+                        className={darkMode ? "bg-slate-800" : "bg-slate-50"}
+                      >
                         <tr className={`border-b ${innerBorderClass}`}>
-                          <th className={`text-left px-3 py-3 ${theme.text}`}>Video nomi</th>
-                          <th className={`text-left px-3 py-3 ${theme.text}`}>Dars nomi</th>
-                          <th className={`text-left px-3 py-3 ${theme.text}`}>Status</th>
-                          <th className={`text-left px-3 py-3 ${theme.text}`}>Dars sanasi</th>
-                          <th className={`text-left px-3 py-3 ${theme.text}`}>Hajmi</th>
-                          <th className={`text-left px-3 py-3 ${theme.text}`}>Qo‘shilgan vaqti</th>
-                          <th className={`text-center px-3 py-3 ${theme.text}`}>Harakatlar</th>
+                          <th className={`text-left px-3 py-3 ${theme.text}`}>
+                            Video nomi
+                          </th>
+                          <th className={`text-left px-3 py-3 ${theme.text}`}>
+                            Dars nomi
+                          </th>
+                          <th className={`text-left px-3 py-3 ${theme.text}`}>
+                            Status
+                          </th>
+                          <th className={`text-left px-3 py-3 ${theme.text}`}>
+                            Dars sanasi
+                          </th>
+                          <th className={`text-left px-3 py-3 ${theme.text}`}>
+                            Hajmi
+                          </th>
+                          <th className={`text-left px-3 py-3 ${theme.text}`}>
+                            Qo‘shilgan vaqti
+                          </th>
+                          <th className={`text-center px-3 py-3 ${theme.text}`}>
+                            Harakatlar
+                          </th>
                         </tr>
                       </thead>
 
@@ -963,24 +1173,36 @@ export default function GroupDetailsPage({
                           <tr
                             key={video.id}
                             className={`border-b ${theme.rowBorder} ${
-                              darkMode ? "hover:bg-slate-800/40" : "hover:bg-slate-50"
+                              darkMode
+                                ? "hover:bg-slate-800/40"
+                                : "hover:bg-slate-50"
                             }`}
                           >
                             <td className={`px-3 py-3 ${theme.text}`}>
                               <div className="flex items-center gap-2">
                                 <span className="text-emerald-500">◔</span>
-                                <span className="underline cursor-pointer">{video.name}</span>
+                                <span className="underline cursor-pointer">
+                                  {video.name}
+                                </span>
                               </div>
                             </td>
-                            <td className={`px-3 py-3 ${theme.text}`}>{video.lessonName}</td>
+                            <td className={`px-3 py-3 ${theme.text}`}>
+                              {video.lessonName}
+                            </td>
                             <td className="px-3 py-3">
                               <span className="px-2 py-1 rounded-full text-[11px] bg-emerald-100 text-emerald-700">
                                 {video.status}
                               </span>
                             </td>
-                            <td className={`px-3 py-3 ${theme.text}`}>{video.lessonDate}</td>
-                            <td className={`px-3 py-3 ${theme.text}`}>{video.size}</td>
-                            <td className={`px-3 py-3 ${theme.text}`}>{video.uploadedAt}</td>
+                            <td className={`px-3 py-3 ${theme.text}`}>
+                              {video.lessonDate}
+                            </td>
+                            <td className={`px-3 py-3 ${theme.text}`}>
+                              {video.size}
+                            </td>
+                            <td className={`px-3 py-3 ${theme.text}`}>
+                              {video.uploadedAt}
+                            </td>
                             <td className="px-3 py-3 text-center">
                               <button
                                 onClick={() => deleteVideo(video.id)}
@@ -994,7 +1216,10 @@ export default function GroupDetailsPage({
 
                         {videos.length === 0 && (
                           <tr>
-                            <td colSpan={7} className={`px-3 py-10 text-center ${theme.soft}`}>
+                            <td
+                              colSpan={7}
+                              className={`px-3 py-10 text-center ${theme.soft}`}
+                            >
                               Videolar hozircha yo‘q
                             </td>
                           </tr>
@@ -1007,120 +1232,148 @@ export default function GroupDetailsPage({
             </div>
           )}
 
-          {activeMainTab === "guruh-darsliklari" && lessonPage === "create-homework" && (
-            <div className={`${theme.card} border rounded-2xl shadow-sm flex-1 min-h-0 overflow-auto p-4 sm:p-6`}>
-              <div className="max-w-4xl mx-auto">
-                <button
-                  onClick={() => setLessonPage("list")}
-                  className={`mb-6 ${theme.soft} hover:opacity-80 text-sm`}
-                >
-                  ← Orqaga
-                </button>
+          {activeMainTab === "guruh-darsliklari" &&
+            lessonPage === "create-homework" && (
+              <div
+                className={`${theme.card} border rounded-2xl shadow-sm flex-1 min-h-0 overflow-auto p-4 sm:p-6`}
+              >
+                <div className="max-w-4xl mx-auto">
+                  <button
+                    onClick={() => setLessonPage("list")}
+                    className={`mb-6 ${theme.soft} hover:opacity-80 text-sm`}
+                  >
+                    ← Orqaga
+                  </button>
 
-                <h2 className={`text-2xl font-bold mb-6 ${theme.text}`}>
-                  Yangi uyga vazifa yaratish
-                </h2>
+                  <h2 className={`text-2xl font-bold mb-6 ${theme.text}`}>
+                    Yangi uyga vazifa yaratish
+                  </h2>
 
-                <div className="space-y-6">
-                  <div>
-                    <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
-                      * Mavzu
-                    </label>
-                    <select
-                      className={inputClass}
-                      value={homeworkForm.title}
-                      onChange={(e) =>
-                        setHomeworkForm({ ...homeworkForm, title: e.target.value })
-                      }
-                    >
-                      <option value="">Mavzulardan birini tanlang</option>
-                      <option value="crm continue backend finish">crm continue backend finish</option>
-                      <option value="crm project continue">crm project continue</option>
-                      <option value="React continue, nested route, NavLink">
-                        React continue, nested route, NavLink
-                      </option>
-                      <option value="React hooks">React hooks</option>
-                      <option value="Custom vazifa">Custom vazifa</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
-                      * Izoh
-                    </label>
-
-                    <div className={`rounded-xl border ${innerBorderClass} overflow-hidden`}>
-                      <div className={`${darkMode ? "bg-slate-800" : "bg-slate-50"} px-3 py-2 border-b ${innerBorderClass} flex items-center gap-4 text-sm`}>
-                        <span>H1</span>
-                        <span>H2</span>
-                        <span>Sans Serif</span>
-                        <span>Normal</span>
-                        <span>B</span>
-                        <span>I</span>
-                        <span>U</span>
-                        <span>S</span>
-                        <span>❝</span>
-                        <span>{"</>"}</span>
-                      </div>
-
-                      <textarea
-                        className={textareaClass}
-                        placeholder="Uyga vazifa izohi..."
-                        value={homeworkForm.description}
-                        onChange={(e) =>
-                          setHomeworkForm({ ...homeworkForm, description: e.target.value })
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
-                      Fayl yuklash
-                    </label>
-
-                    <label
-                      className={`flex items-center justify-center w-full rounded-xl border border-dashed ${innerBorderClass} px-4 py-6 cursor-pointer ${darkMode ? "hover:bg-slate-800" : "hover:bg-slate-50"}`}
-                    >
-                      <input
-                        type="file"
-                        className="hidden"
+                  <div className="space-y-6">
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${theme.text}`}
+                      >
+                        * Mavzu
+                      </label>
+                      <select
+                        className={inputClass}
+                        value={homeworkForm.title}
                         onChange={(e) =>
                           setHomeworkForm({
                             ...homeworkForm,
-                            fileName: e.target.files?.[0]?.name || "",
+                            title: e.target.value,
                           })
                         }
-                      />
-                      <span className={theme.soft}>
-                        ⬇ Yuklash {homeworkForm.fileName ? `- ${homeworkForm.fileName}` : ""}
-                      </span>
-                    </label>
-                  </div>
+                      >
+                        <option value="">Mavzulardan birini tanlang</option>
+                        <option value="crm continue backend finish">
+                          crm continue backend finish
+                        </option>
+                        <option value="crm project continue">
+                          crm project continue
+                        </option>
+                        <option value="React continue, nested route, NavLink">
+                          React continue, nested route, NavLink
+                        </option>
+                        <option value="React hooks">React hooks</option>
+                        <option value="Custom vazifa">Custom vazifa</option>
+                      </select>
+                    </div>
 
-                  <div className="flex items-center justify-end gap-3 pt-2">
-                    <button
-                      onClick={() => setLessonPage("list")}
-                      className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 bg-white hover:bg-slate-50"
-                    >
-                      Bekor qilish
-                    </button>
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${theme.text}`}
+                      >
+                        * Izoh
+                      </label>
 
-                    <button
-                      onClick={addHomework}
-                      className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white"
-                    >
-                      E&apos;lon qilish
-                    </button>
+                      <div
+                        className={`rounded-xl border ${innerBorderClass} overflow-hidden`}
+                      >
+                        <div
+                          className={`${darkMode ? "bg-slate-800" : "bg-slate-50"} px-3 py-2 border-b ${innerBorderClass} flex items-center gap-4 text-sm`}
+                        >
+                          <span>H1</span>
+                          <span>H2</span>
+                          <span>Sans Serif</span>
+                          <span>Normal</span>
+                          <span>B</span>
+                          <span>I</span>
+                          <span>U</span>
+                          <span>S</span>
+                          <span>❝</span>
+                          <span>{"</>"}</span>
+                        </div>
+
+                        <textarea
+                          className={textareaClass}
+                          placeholder="Uyga vazifa izohi..."
+                          value={homeworkForm.description}
+                          onChange={(e) =>
+                            setHomeworkForm({
+                              ...homeworkForm,
+                              description: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label
+                        className={`block text-sm font-medium mb-2 ${theme.text}`}
+                      >
+                        Fayl yuklash
+                      </label>
+
+                      <label
+                        className={`flex items-center justify-center w-full rounded-xl border border-dashed ${innerBorderClass} px-4 py-6 cursor-pointer ${darkMode ? "hover:bg-slate-800" : "hover:bg-slate-50"}`}
+                      >
+                        <input
+                          type="file"
+                          className="hidden"
+                          onChange={(e) =>
+                            setHomeworkForm({
+                              ...homeworkForm,
+                              fileName: e.target.files?.[0]?.name || "",
+                            })
+                          }
+                        />
+                        <span className={theme.soft}>
+                          ⬇ Yuklash{" "}
+                          {homeworkForm.fileName
+                            ? `- ${homeworkForm.fileName}`
+                            : ""}
+                        </span>
+                      </label>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3 pt-2">
+                      <button
+                        onClick={() => setLessonPage("list")}
+                        className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 bg-white hover:bg-slate-50"
+                      >
+                        Bekor qilish
+                      </button>
+
+                      <button
+                        onClick={addHomework}
+                        className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white"
+                      >
+                        E&apos;lon qilish
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
           {showEditModal && (
             <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-              <div className={`${theme.card} w-full max-w-xl rounded-2xl border p-4 shadow-xl`}>
+              <div
+                className={`${theme.card} w-full max-w-xl rounded-2xl border p-4 shadow-xl`}
+              >
                 <h3 className={`text-lg font-semibold mb-4 ${theme.text}`}>
                   Guruhni tahrirlash
                 </h3>
@@ -1130,37 +1383,49 @@ export default function GroupDetailsPage({
                     className={inputClass}
                     placeholder="Guruh nomi"
                     value={editForm.name}
-                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, name: e.target.value })
+                    }
                   />
                   <input
                     className={inputClass}
                     placeholder="Kurs nomi"
                     value={editForm.course}
-                    onChange={(e) => setEditForm({ ...editForm, course: e.target.value })}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, course: e.target.value })
+                    }
                   />
                   <input
                     className={inputClass}
                     placeholder="Narxi"
                     value={editForm.price}
-                    onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, price: e.target.value })
+                    }
                   />
                   <input
                     className={inputClass}
                     placeholder="Vaqti"
                     value={editForm.time}
-                    onChange={(e) => setEditForm({ ...editForm, time: e.target.value })}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, time: e.target.value })
+                    }
                   />
                   <input
                     className={inputClass}
                     placeholder="Davomiyligi"
                     value={editForm.duration}
-                    onChange={(e) => setEditForm({ ...editForm, duration: e.target.value })}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, duration: e.target.value })
+                    }
                   />
                   <input
                     className={inputClass}
                     placeholder="Xona"
                     value={editForm.room}
-                    onChange={(e) => setEditForm({ ...editForm, room: e.target.value })}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, room: e.target.value })
+                    }
                   />
                 </div>
 
@@ -1169,12 +1434,17 @@ export default function GroupDetailsPage({
                     className={inputClass}
                     placeholder="Kunlar (vergul bilan)"
                     value={editForm.days}
-                    onChange={(e) => setEditForm({ ...editForm, days: e.target.value })}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, days: e.target.value })
+                    }
                   />
                 </div>
 
                 <div className="flex justify-end gap-2 mt-4">
-                  <button onClick={() => setShowEditModal(false)} className={actionBtnClass}>
+                  <button
+                    onClick={() => setShowEditModal(false)}
+                    className={actionBtnClass}
+                  >
                     Bekor qilish
                   </button>
                   <button
@@ -1190,7 +1460,9 @@ export default function GroupDetailsPage({
 
           {showTeacherModal && (
             <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-              <div className={`${theme.card} w-full max-w-md rounded-2xl border p-4 shadow-xl`}>
+              <div
+                className={`${theme.card} w-full max-w-md rounded-2xl border p-4 shadow-xl`}
+              >
                 <h3 className={`text-lg font-semibold mb-4 ${theme.text}`}>
                   O‘qituvchi qo‘shish
                 </h3>
@@ -1200,18 +1472,25 @@ export default function GroupDetailsPage({
                     className={inputClass}
                     placeholder="O‘qituvchi ismi"
                     value={teacherForm.name}
-                    onChange={(e) => setTeacherForm({ ...teacherForm, name: e.target.value })}
+                    onChange={(e) =>
+                      setTeacherForm({ ...teacherForm, name: e.target.value })
+                    }
                   />
                   <input
                     className={inputClass}
                     placeholder="Telefon raqami"
                     value={teacherForm.phone}
-                    onChange={(e) => setTeacherForm({ ...teacherForm, phone: e.target.value })}
+                    onChange={(e) =>
+                      setTeacherForm({ ...teacherForm, phone: e.target.value })
+                    }
                   />
                 </div>
 
                 <div className="flex justify-end gap-2 mt-4">
-                  <button onClick={() => setShowTeacherModal(false)} className={actionBtnClass}>
+                  <button
+                    onClick={() => setShowTeacherModal(false)}
+                    className={actionBtnClass}
+                  >
                     Bekor qilish
                   </button>
                   <button
@@ -1227,7 +1506,9 @@ export default function GroupDetailsPage({
 
           {showStudentModal && (
             <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-              <div className={`${theme.card} w-full max-w-md rounded-2xl border p-4 shadow-xl`}>
+              <div
+                className={`${theme.card} w-full max-w-md rounded-2xl border p-4 shadow-xl`}
+              >
                 <h3 className={`text-lg font-semibold mb-4 ${theme.text}`}>
                   O‘quvchi qo‘shish
                 </h3>
@@ -1237,18 +1518,25 @@ export default function GroupDetailsPage({
                     className={inputClass}
                     placeholder="O‘quvchi ismi"
                     value={studentForm.name}
-                    onChange={(e) => setStudentForm({ ...studentForm, name: e.target.value })}
+                    onChange={(e) =>
+                      setStudentForm({ ...studentForm, name: e.target.value })
+                    }
                   />
                   <input
                     className={inputClass}
                     placeholder="Telefon raqami"
                     value={studentForm.phone}
-                    onChange={(e) => setStudentForm({ ...studentForm, phone: e.target.value })}
+                    onChange={(e) =>
+                      setStudentForm({ ...studentForm, phone: e.target.value })
+                    }
                   />
                 </div>
 
                 <div className="flex justify-end gap-2 mt-4">
-                  <button onClick={() => setShowStudentModal(false)} className={actionBtnClass}>
+                  <button
+                    onClick={() => setShowStudentModal(false)}
+                    className={actionBtnClass}
+                  >
                     Bekor qilish
                   </button>
                   <button
@@ -1274,7 +1562,9 @@ export default function GroupDetailsPage({
               ×
             </button>
 
-            <h3 className="text-lg font-semibold text-slate-800 mb-4">Qo'shish</h3>
+            <h3 className="text-lg font-semibold text-slate-800 mb-4">
+              Qo'shish
+            </h3>
 
             <div
               onClick={() => fileRef.current?.click()}
@@ -1282,10 +1572,12 @@ export default function GroupDetailsPage({
             >
               <div className="text-emerald-500 text-4xl mb-4">🧰</div>
               <p className="text-slate-700 text-base font-medium">
-                Videofaylni yuklash uchun ushbu hudud ustiga bosing yoki faylni shu yerga olib keling
+                Videofaylni yuklash uchun ushbu hudud ustiga bosing yoki faylni
+                shu yerga olib keling
               </p>
               <p className="text-slate-400 text-sm mt-2">
-                Videofayl .mp4, .webm, .mpeg, .avi, .mkv, .mov formatlaridan birida bo‘lishi kerak
+                Videofayl .mp4, .webm, .mpeg, .avi, .mkv, .mov formatlaridan
+                birida bo‘lishi kerak
               </p>
 
               <input
@@ -1310,126 +1602,10 @@ export default function GroupDetailsPage({
       )}
 
       {selectedHomework && (
-        <div className="fixed inset-0 z-[80] bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-7xl h-[88vh] rounded-2xl shadow-xl border overflow-hidden flex flex-col">
-            <div className="shrink-0 px-6 py-4 border-b flex items-center gap-3">
-              <button
-                onClick={() => setSelectedHomework(null)}
-                className="text-slate-500 hover:text-slate-800 text-xl"
-              >
-                ←
-              </button>
-              <h2 className="text-2xl font-bold text-slate-800">
-                {selectedHomework.title}
-              </h2>
-            </div>
-
-            <div className="shrink-0 px-6 py-4 border-b">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <p className="text-sm text-slate-500">Mavzu</p>
-                  <p className="text-xl font-semibold text-slate-900 mt-1">
-                    {selectedHomework.title}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-slate-500">Tugash vaqti</p>
-                  <p className="text-xl font-semibold text-slate-900 mt-1">
-                    {selectedHomework.deadline}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="shrink-0 px-6 pt-4 border-b">
-              <div className="flex items-center gap-8 overflow-x-auto">
-                <button
-                  onClick={() => setHomeworkDetailTab("kutayotgan")}
-                  className={`pb-3 text-sm font-medium border-b-2 ${
-                    homeworkDetailTab === "kutayotgan"
-                      ? "border-emerald-500 text-emerald-600"
-                      : "border-transparent text-slate-500"
-                  }`}
-                >
-                  Kutayotganlar
-                  <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-yellow-400 px-1.5 text-[10px] text-white">
-                    {getCountByStatus("kutayotgan")}
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => setHomeworkDetailTab("qaytarilgan")}
-                  className={`pb-3 text-sm font-medium border-b-2 ${
-                    homeworkDetailTab === "qaytarilgan"
-                      ? "border-emerald-500 text-emerald-600"
-                      : "border-transparent text-slate-500"
-                  }`}
-                >
-                  Qaytarilganlar
-                  <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-yellow-400 px-1.5 text-[10px] text-white">
-                    {getCountByStatus("qaytarilgan")}
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => setHomeworkDetailTab("qabul")}
-                  className={`pb-3 text-sm font-medium border-b-2 ${
-                    homeworkDetailTab === "qabul"
-                      ? "border-emerald-500 text-emerald-600"
-                      : "border-transparent text-slate-500"
-                  }`}
-                >
-                  Qabul qilinganlar
-                  <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-yellow-400 px-1.5 text-[10px] text-white">
-                    {getCountByStatus("qabul")}
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => setHomeworkDetailTab("bajarilmagan")}
-                  className={`pb-3 text-sm font-medium border-b-2 ${
-                    homeworkDetailTab === "bajarilmagan"
-                      ? "border-emerald-500 text-emerald-600"
-                      : "border-transparent text-slate-500"
-                  }`}
-                >
-                  Bajarilmagan
-                  <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-yellow-400 px-1.5 text-[10px] text-white">
-                    {getCountByStatus("bajarilmagan")}
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-auto px-6 py-4">
-              <div className="min-w-[800px]">
-                <div className="grid grid-cols-[1.3fr_0.7fr] border-b pb-3 text-sm font-medium text-slate-500">
-                  <div>O'quvchi ismi</div>
-                  <div>Uyga vazifa jo'natilgan vaqt</div>
-                </div>
-
-                {filteredHomeworkStudents.map((item, index) => (
-                  <div
-                    key={item.id}
-                    className={`grid grid-cols-[1.3fr_0.7fr] py-4 border-b text-sm ${
-                      index % 2 === 0 ? "bg-white" : "bg-slate-50/50"
-                    }`}
-                  >
-                    <div className="text-slate-800 px-1">{item.name}</div>
-                    <div className="text-slate-700 px-1">{item.sentAt}</div>
-                  </div>
-                ))}
-
-                {filteredHomeworkStudents.length === 0 && (
-                  <div className="py-16 text-center text-slate-400">
-                    Bu bo‘limda hozircha ma’lumot yo‘q
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+        <HomeworkDetailPage
+          homework={selectedHomework}
+          onBack={() => setSelectedHomework(null)}
+        />
       )}
     </>
   );

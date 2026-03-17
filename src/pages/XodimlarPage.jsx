@@ -1,92 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-
-const branches = [
-  "AICoder markazi",
-  "Fizika va Matematika",
-  "4-maktab",
-  "Niner markazi",
-  "SAT,IELTS,AP,CONSULTING centre",
-  "IELTS full mock centre",
-  "IELTS full mock",
-  "IELTS full mock_centre_1",
-  "IELTS,SAT,CONSULTING_n1",
-  "No name",
-  "Debate center",
-  "Academia",
-  "Arxiv",
-];
+import { usersApi } from "../api/crmApi";
 
 const roles = [
-  "DIREKTOR",
-  "USTOZ IT",
-  "TEST ADMIN",
-  "DASTURCHI",
-  "BEKORCHI",
+  "SUPERADMIN",
   "ADMIN",
-  "MANAGER",
-];
-
-const defaultEmployees = [
-  {
-    id: 1,
-    fullName: "TEAST",
-    role: "USTOZ IT",
-    phone: "+998908877121",
-    email: "testiv@gmail.com",
-    birthDate: "2004-01-01",
-    createdAt: "2026-02-23",
-    coin: 0,
-    branch: "AICoder markazi",
-    photo: "",
-  },
-  {
-    id: 2,
-    fullName: "SALOM",
-    role: "DIREKTOR",
-    phone: "998933331234",
-    email: "Salom@gmail.com",
-    birthDate: "2005-02-20",
-    createdAt: "2026-02-23",
-    coin: 0,
-    branch: "AICoder markazi",
-    photo: "",
-  },
-  {
-    id: 3,
-    fullName: "BUNYODBEK G'ULOMJONOV",
-    role: "DIREKTOR",
-    phone: "998939349344",
-    email: "gulomjonovbunyodbek61@gmail.com",
-    birthDate: "2004-02-20",
-    createdAt: "2026-02-25",
-    coin: 0,
-    branch: "AICoder markazi",
-    photo: "",
-  },
-  {
-    id: 4,
-    fullName: "DILSHOD ADMIN",
-    role: "DIREKTOR",
-    phone: "998908899133",
-    email: "dilshodadmin@gmail.com",
-    birthDate: "2006-01-01",
-    createdAt: "2026-02-23",
-    coin: 0,
-    branch: "AICoder markazi",
-    photo: "",
-  },
-  {
-    id: 5,
-    fullName: "UMBAROV D",
-    role: "USTOZ IT",
-    phone: "998904561231",
-    email: "dilshodjon13@gmail.com",
-    birthDate: "2000-01-01",
-    createdAt: "2026-02-23",
-    coin: 15,
-    branch: "AICoder markazi",
-    photo: "",
-  },
+  "MANAGEMENT",
+  "ADMINSTRATOR",
+  "TEACHER",
+  "STUDENT",
 ];
 
 const formatDate = (value) => {
@@ -105,68 +26,89 @@ const getInitials = (name = "") => {
 };
 
 export default function EmployeesPage({ theme, darkMode }) {
-  const [activeBranch, setActiveBranch] = useState("AICoder markazi");
   const [showDrawer, setShowDrawer] = useState(false);
   const [editingEmployeeId, setEditingEmployeeId] = useState(null);
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState("");
 
-  const [employees, setEmployees] = useState(() => {
-    const saved = localStorage.getItem("crm_employees");
-    return saved ? JSON.parse(saved) : defaultEmployees;
-  });
+  const [employees, setEmployees] = useState([]);
 
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
-    phone: "+998",
-    birthDate: "",
+    hireDate: "",
     password: "",
     role: "",
-    branch: "AICoder markazi",
+    position: "",
+    address: "",
     photo: "",
   });
 
-  useEffect(() => {
-    localStorage.setItem("crm_employees", JSON.stringify(employees));
-  }, [employees]);
+  const loadEmployees = async () => {
+    try {
+      setLoading(true);
+      const result = await usersApi.getAll();
+      const list = Array.isArray(result?.data) ? result.data : [];
+
+      setEmployees(
+        list.map((user) => ({
+          id: user.id,
+          fullName: user.fullName,
+          role: user.role,
+          email: user.email,
+          hireDate: user.hire_date
+            ? new Date(user.hire_date).toISOString().slice(0, 10)
+            : "",
+          createdAt: user.created_at
+            ? new Date(user.created_at).toISOString().slice(0, 10)
+            : "",
+          coin: 0,
+          position: user.position || "-",
+          address: user.address || "",
+          photo: user.photo || "",
+        })),
+      );
+    } catch {
+      setEmployees([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (!showDrawer) {
-      setFormData((prev) => ({
-        ...prev,
-        branch: activeBranch,
-      }));
-    }
-  }, [activeBranch, showDrawer]);
+    loadEmployees();
+  }, []);
 
   const filteredEmployees = useMemo(() => {
     return employees.filter((employee) => {
-      const matchesBranch = employee.branch === activeBranch;
       const query = search.trim().toLowerCase();
 
       const matchesSearch =
         !query ||
         employee.fullName.toLowerCase().includes(query) ||
         employee.email.toLowerCase().includes(query) ||
-        employee.phone.toLowerCase().includes(query) ||
+        employee.position.toLowerCase().includes(query) ||
         employee.role.toLowerCase().includes(query);
 
-      return matchesBranch && matchesSearch;
+      return matchesSearch;
     });
-  }, [employees, activeBranch, search]);
+  }, [employees, search]);
 
   const resetForm = () => {
     setEditingEmployeeId(null);
     setFormData({
       fullName: "",
       email: "",
-      phone: "+998",
-      birthDate: "",
+      hireDate: "",
       password: "",
       role: "",
-      branch: activeBranch,
+      position: "",
+      address: "",
       photo: "",
     });
+    setPhotoPreview("");
   };
 
   const openAddDrawer = () => {
@@ -174,13 +116,14 @@ export default function EmployeesPage({ theme, darkMode }) {
     setFormData({
       fullName: "",
       email: "",
-      phone: "+998",
-      birthDate: "",
+      hireDate: "",
       password: "",
       role: "",
-      branch: activeBranch,
+      position: "",
+      address: "",
       photo: "",
     });
+    setPhotoPreview("");
     setShowDrawer(true);
   };
 
@@ -189,13 +132,14 @@ export default function EmployeesPage({ theme, darkMode }) {
     setFormData({
       fullName: employee.fullName,
       email: employee.email,
-      phone: employee.phone,
-      birthDate: employee.birthDate,
+      hireDate: employee.hireDate,
       password: "",
       role: employee.role,
-      branch: employee.branch,
-      photo: employee.photo || "",
+      position: employee.position || "",
+      address: employee.address || "",
+      photo: "",
     });
+    setPhotoPreview(employee.photo || "");
     setShowDrawer(true);
   };
 
@@ -208,14 +152,12 @@ export default function EmployeesPage({ theme, darkMode }) {
     const { name, value, files } = e.target;
 
     if (name === "photo" && files?.[0]) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prev) => ({
-          ...prev,
-          photo: reader.result,
-        }));
-      };
-      reader.readAsDataURL(files[0]);
+      const file = files[0];
+      setFormData((prev) => ({
+        ...prev,
+        photo: file,
+      }));
+      setPhotoPreview(URL.createObjectURL(file));
       return;
     }
 
@@ -225,79 +167,86 @@ export default function EmployeesPage({ theme, darkMode }) {
     }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (
       !formData.fullName.trim() ||
       !formData.email.trim() ||
-      !formData.phone.trim() ||
-      !formData.birthDate ||
-      !formData.role.trim()
+      !formData.position.trim()
     ) {
       alert("Majburiy maydonlarni to‘ldiring");
       return;
     }
 
-    if (editingEmployeeId !== null) {
-      setEmployees((prev) =>
-        prev.map((employee) =>
-          employee.id === editingEmployeeId
-            ? {
-                ...employee,
-                fullName: formData.fullName.trim(),
-                email: formData.email.trim(),
-                phone: formData.phone.trim(),
-                birthDate: formData.birthDate,
-                role: formData.role,
-                branch: formData.branch,
-                photo: formData.photo,
-              }
-            : employee
-        )
-      );
-    } else {
-      const newEmployee = {
-        id: Date.now(),
-        fullName: formData.fullName.trim(),
-        email: formData.email.trim(),
-        phone: formData.phone.trim(),
-        birthDate: formData.birthDate,
-        role: formData.role,
-        branch: formData.branch,
-        photo: formData.photo,
-        password: formData.password,
-        createdAt: new Date().toISOString().slice(0, 10),
-        coin: 0,
-      };
+    try {
+      setSaving(true);
 
-      setEmployees((prev) => [newEmployee, ...prev]);
+      if (editingEmployeeId !== null) {
+        await usersApi.update(editingEmployeeId, {
+          fullName: formData.fullName.trim(),
+          email: formData.email.trim(),
+          position: formData.position.trim(),
+          address: formData.address.trim() || undefined,
+          ...(formData.photo instanceof File ? { photo: formData.photo } : {}),
+        });
+      } else {
+        if (!formData.password.trim()) {
+          alert("Yangi xodim uchun parol kiriting");
+          return;
+        }
+        if (!formData.role.trim() || !formData.hireDate) {
+          alert("Yangi xodim uchun role va ishga kirgan sanani kiriting");
+          return;
+        }
+
+        await usersApi.create({
+          fullName: formData.fullName.trim(),
+          email: formData.email.trim(),
+          password: formData.password.trim(),
+          role: formData.role,
+          position: formData.position.trim(),
+          hire_date: formData.hireDate,
+          address: formData.address.trim() || undefined,
+          ...(formData.photo instanceof File ? { photo: formData.photo } : {}),
+        });
+      }
+
+      await loadEmployees();
+      closeDrawer();
+    } catch (error) {
+      alert(error?.response?.data?.message || "Xodimni saqlashda xato");
+    } finally {
+      setSaving(false);
     }
-
-    closeDrawer();
   };
 
-  const handleDelete = (id) => {
-    setEmployees((prev) => prev.filter((employee) => employee.id !== id));
+  const handleDelete = async (id) => {
+    try {
+      await usersApi.remove(id);
+      await loadEmployees();
+    } catch (error) {
+      alert(error?.response?.data?.message || "Xodimni o'chirishda xato");
+    }
   };
 
   const roleBadgeClass = (role) => {
     const base = "inline-flex px-2.5 py-1 rounded-full text-[11px] font-medium";
     const map = {
-      DIREKTOR: darkMode
+      SUPERADMIN: darkMode
         ? "bg-red-500/10 text-red-300"
         : "bg-red-50 text-red-500",
-      "USTOZ IT": darkMode
+      ADMIN: darkMode
         ? "bg-orange-500/10 text-orange-300"
         : "bg-orange-50 text-orange-500",
-      "TEST ADMIN": darkMode
+      MANAGEMENT: darkMode
         ? "bg-pink-500/10 text-pink-300"
         : "bg-pink-50 text-pink-500",
-      DASTURCHI: darkMode
+      ADMINSTRATOR: darkMode
         ? "bg-blue-500/10 text-blue-300"
         : "bg-blue-50 text-blue-500",
-      ADMIN: darkMode
+      TEACHER: darkMode
         ? "bg-violet-500/10 text-violet-300"
         : "bg-violet-50 text-violet-500",
-      MANAGER: darkMode
+      STUDENT: darkMode
         ? "bg-emerald-500/10 text-emerald-300"
         : "bg-emerald-50 text-emerald-500",
     };
@@ -315,11 +264,13 @@ export default function EmployeesPage({ theme, darkMode }) {
       >
         <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 mb-5 min-w-0">
           <div className="min-w-0">
-            <h2 className={`text-xl sm:text-2xl font-bold break-words ${theme.text}`}>
+            <h2
+              className={`text-xl sm:text-2xl font-bold break-words ${theme.text}`}
+            >
               Xodimlar
             </h2>
             <p className={`text-sm mt-1 break-words ${theme.soft}`}>
-              {activeBranch} filialida {filteredEmployees.length} ta xodim
+              Jami {filteredEmployees.length} ta xodim
             </p>
           </div>
 
@@ -341,37 +292,45 @@ export default function EmployeesPage({ theme, darkMode }) {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 mb-5">
-          {branches.map((branch) => (
-            <button
-              key={branch}
-              onClick={() => setActiveBranch(branch)}
-              className={`max-w-full break-words px-4 py-2 rounded-xl border text-sm transition ${
-                activeBranch === branch ? theme.tabActive : theme.tab
-              }`}
-            >
-              {branch}
-            </button>
-          ))}
-        </div>
-
         <div className="hidden lg:block mt-5 rounded-2xl border overflow-hidden">
           <table className="w-full text-sm table-fixed">
             <thead className={darkMode ? "bg-slate-900/60" : "bg-slate-50"}>
               <tr className={theme.soft}>
-                <th className="text-left font-medium px-3 py-4 w-[210px]">Nomi</th>
-                <th className="text-left font-medium px-3 py-4 w-[130px]">Lavozimi</th>
-                <th className="text-left font-medium px-3 py-4 w-[130px]">Telefon raqami</th>
-                <th className="text-left font-medium px-3 py-4 w-[190px]">Email</th>
-                <th className="text-left font-medium px-3 py-4 w-[120px]">Tug‘ilgan sana</th>
-                <th className="text-left font-medium px-3 py-4 w-[120px]">Yaratilgan sana</th>
-                <th className="text-left font-medium px-3 py-4 w-[80px]">Coin</th>
-                <th className="text-right font-medium px-3 py-4 w-[140px]">Amallar</th>
+                <th className="text-left font-medium px-3 py-4 w-[210px]">
+                  Nomi
+                </th>
+                <th className="text-left font-medium px-3 py-4 w-[130px]">
+                  Lavozimi
+                </th>
+                <th className="text-left font-medium px-3 py-4 w-[130px]">
+                  Rol
+                </th>
+                <th className="text-left font-medium px-3 py-4 w-[160px]">
+                  Email
+                </th>
+                <th className="text-left font-medium px-3 py-4 w-[120px]">
+                  Ishga kirgan sana
+                </th>
+                <th className="text-left font-medium px-3 py-4 w-[120px]">
+                  Yaratilgan sana
+                </th>
+                <th className="text-left font-medium px-3 py-4 w-[140px]">
+                  Manzil
+                </th>
+                <th className="text-right font-medium px-3 py-4 w-[140px]">
+                  Amallar
+                </th>
               </tr>
             </thead>
 
             <tbody>
-              {filteredEmployees.length > 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={8} className={`text-center py-10 ${theme.soft}`}>
+                    Yuklanmoqda...
+                  </td>
+                </tr>
+              ) : filteredEmployees.length > 0 ? (
                 filteredEmployees.map((employee, index) => (
                   <tr
                     key={employee.id}
@@ -418,29 +377,35 @@ export default function EmployeesPage({ theme, darkMode }) {
                       </span>
                     </td>
 
-                    <td className={`px-3 py-4 truncate ${theme.text}`} title={employee.phone}>
-                      {employee.phone}
+                    <td
+                      className={`px-3 py-4 truncate ${theme.text}`}
+                      title={employee.role}
+                    >
+                      {employee.role}
                     </td>
 
                     <td className="px-3 py-4">
-                      <p className={`truncate ${theme.text}`} title={employee.email}>
+                      <p
+                        className={`truncate ${theme.text}`}
+                        title={employee.email}
+                      >
                         {employee.email}
                       </p>
                     </td>
 
                     <td className={`px-3 py-4 ${theme.text}`}>
-                      {formatDate(employee.birthDate)}
+                      {formatDate(employee.hireDate)}
                     </td>
 
                     <td className={`px-3 py-4 ${theme.text}`}>
                       {formatDate(employee.createdAt)}
                     </td>
 
-                    <td className="px-3 py-4">
-                      <div className="flex items-center gap-2">
-                        <span>🪙</span>
-                        <span className={theme.text}>{employee.coin}</span>
-                      </div>
+                    <td
+                      className={`px-3 py-4 truncate ${theme.text}`}
+                      title={employee.address || "-"}
+                    >
+                      {employee.address || "-"}
                     </td>
 
                     <td className="px-3 py-4">
@@ -483,7 +448,7 @@ export default function EmployeesPage({ theme, darkMode }) {
               ) : (
                 <tr>
                   <td colSpan={8} className={`text-center py-10 ${theme.soft}`}>
-                    Bu filialda xodim topilmadi
+                    Xodim topilmadi
                   </td>
                 </tr>
               )}
@@ -492,7 +457,15 @@ export default function EmployeesPage({ theme, darkMode }) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:hidden mt-5">
-          {filteredEmployees.length > 0 ? (
+          {loading ? (
+            <div
+              className={`col-span-full text-center py-10 rounded-2xl border ${
+                darkMode ? "border-slate-800" : "border-slate-200"
+              } ${theme.soft}`}
+            >
+              Yuklanmoqda...
+            </div>
+          ) : filteredEmployees.length > 0 ? (
             filteredEmployees.map((employee, index) => (
               <div
                 key={employee.id}
@@ -567,7 +540,7 @@ export default function EmployeesPage({ theme, darkMode }) {
 
                 <div className="mt-4 space-y-2 text-sm">
                   <div className={`break-words ${theme.text}`}>
-                    <span className="font-medium">Telefon:</span> {employee.phone}
+                    <span className="font-medium">Rol:</span> {employee.role}
                   </div>
 
                   <div className={`break-words ${theme.text}`}>
@@ -575,8 +548,8 @@ export default function EmployeesPage({ theme, darkMode }) {
                   </div>
 
                   <div className={theme.text}>
-                    <span className="font-medium">Tug‘ilgan sana:</span>{" "}
-                    {formatDate(employee.birthDate)}
+                    <span className="font-medium">Ishga kirgan sana:</span>{" "}
+                    {formatDate(employee.hireDate)}
                   </div>
 
                   <div className={theme.text}>
@@ -584,9 +557,9 @@ export default function EmployeesPage({ theme, darkMode }) {
                     {formatDate(employee.createdAt)}
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <span>🪙</span>
-                    <span className={theme.text}>{employee.coin}</span>
+                  <div className={`break-words ${theme.text}`}>
+                    <span className="font-medium">Manzil:</span>{" "}
+                    {employee.address || "-"}
                   </div>
                 </div>
               </div>
@@ -597,7 +570,7 @@ export default function EmployeesPage({ theme, darkMode }) {
                 darkMode ? "border-slate-800" : "border-slate-200"
               } ${theme.soft}`}
             >
-              Bu filialda xodim topilmadi
+              Xodim topilmadi
             </div>
           )}
         </div>
@@ -623,14 +596,19 @@ export default function EmployeesPage({ theme, darkMode }) {
                   : "Yangi Xodim qo‘shish"}
               </h2>
 
-              <button onClick={closeDrawer} className={`text-xl shrink-0 ${theme.soft}`}>
+              <button
+                onClick={closeDrawer}
+                className={`text-xl shrink-0 ${theme.soft}`}
+              >
                 ×
               </button>
             </div>
 
             <div className="p-4 sm:p-6 space-y-5">
               <div>
-                <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
+                <label
+                  className={`block text-sm font-medium mb-2 ${theme.text}`}
+                >
                   FIO
                 </label>
                 <input
@@ -644,7 +622,9 @@ export default function EmployeesPage({ theme, darkMode }) {
               </div>
 
               <div>
-                <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
+                <label
+                  className={`block text-sm font-medium mb-2 ${theme.text}`}
+                >
                   Email
                 </label>
                 <input
@@ -658,34 +638,25 @@ export default function EmployeesPage({ theme, darkMode }) {
               </div>
 
               <div>
-                <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
-                  Telefon raqam
-                </label>
-                <input
-                  type="text"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  placeholder="+998"
-                  className={`w-full rounded-xl border px-4 py-3 outline-none min-w-0 ${theme.input}`}
-                />
-              </div>
-
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
-                  Tug‘ilgan sana
+                <label
+                  className={`block text-sm font-medium mb-2 ${theme.text}`}
+                >
+                  Ishga kirgan sana
                 </label>
                 <input
                   type="date"
-                  name="birthDate"
-                  value={formData.birthDate}
+                  name="hireDate"
+                  value={formData.hireDate}
                   onChange={handleChange}
+                  disabled={editingEmployeeId !== null}
                   className={`w-full rounded-xl border px-4 py-3 outline-none min-w-0 ${theme.input}`}
                 />
               </div>
 
               <div>
-                <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
+                <label
+                  className={`block text-sm font-medium mb-2 ${theme.text}`}
+                >
                   Parol
                 </label>
                 <input
@@ -699,13 +670,16 @@ export default function EmployeesPage({ theme, darkMode }) {
               </div>
 
               <div>
-                <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
-                  Lavozim (Role)
+                <label
+                  className={`block text-sm font-medium mb-2 ${theme.text}`}
+                >
+                  Rol
                 </label>
                 <select
                   name="role"
                   value={formData.role}
                   onChange={handleChange}
+                  disabled={editingEmployeeId !== null}
                   className={`w-full rounded-xl border px-4 py-3 outline-none min-w-0 ${theme.input}`}
                 >
                   <option value="">Tanlang</option>
@@ -718,25 +692,41 @@ export default function EmployeesPage({ theme, darkMode }) {
               </div>
 
               <div>
-                <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
-                  Filial
-                </label>
-                <select
-                  name="branch"
-                  value={formData.branch}
-                  onChange={handleChange}
-                  className={`w-full rounded-xl border px-4 py-3 outline-none min-w-0 ${theme.input}`}
+                <label
+                  className={`block text-sm font-medium mb-2 ${theme.text}`}
                 >
-                  {branches.map((branch) => (
-                    <option key={branch} value={branch}>
-                      {branch}
-                    </option>
-                  ))}
-                </select>
+                  Lavozim (position)
+                </label>
+                <input
+                  type="text"
+                  name="position"
+                  value={formData.position}
+                  onChange={handleChange}
+                  placeholder="Masalan: Manager"
+                  className={`w-full rounded-xl border px-4 py-3 outline-none min-w-0 ${theme.input}`}
+                />
               </div>
 
               <div>
-                <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
+                <label
+                  className={`block text-sm font-medium mb-2 ${theme.text}`}
+                >
+                  Manzil (ixtiyoriy)
+                </label>
+                <input
+                  type="text"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  placeholder="Manzil"
+                  className={`w-full rounded-xl border px-4 py-3 outline-none min-w-0 ${theme.input}`}
+                />
+              </div>
+
+              <div>
+                <label
+                  className={`block text-sm font-medium mb-2 ${theme.text}`}
+                >
                   Surati
                 </label>
 
@@ -755,9 +745,9 @@ export default function EmployeesPage({ theme, darkMode }) {
                     className="hidden"
                   />
 
-                  {formData.photo ? (
+                  {photoPreview ? (
                     <img
-                      src={formData.photo}
+                      src={photoPreview}
                       alt="Preview"
                       className="w-20 h-20 rounded-full object-cover mb-3"
                     />
@@ -768,9 +758,7 @@ export default function EmployeesPage({ theme, darkMode }) {
                   <p className={`text-sm font-medium ${theme.text}`}>
                     Click to upload yoki yuklang
                   </p>
-                  <p className={`text-xs mt-1 ${theme.soft}`}>
-                    PNG, JPG, JPEG
-                  </p>
+                  <p className={`text-xs mt-1 ${theme.soft}`}>PNG, JPG, JPEG</p>
                 </label>
               </div>
             </div>
@@ -793,9 +781,10 @@ export default function EmployeesPage({ theme, darkMode }) {
 
               <button
                 onClick={handleSave}
+                disabled={saving}
                 className="px-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-medium"
               >
-                Saqlash
+                {saving ? "Saqlanmoqda..." : "Saqlash"}
               </button>
             </div>
           </div>
