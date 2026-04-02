@@ -15,15 +15,21 @@ const appendFormDataValue = (formData, key, value) => {
 
 const toFormData = (payload) => {
   const formData = new FormData();
+
   Object.entries(payload || {}).forEach(([key, value]) => {
     appendFormDataValue(formData, key, value);
   });
+
   return formData;
 };
 
 export const authApi = {
   loginAdmin: async (payload) =>
     unwrap(await apiClient.post("/auth/login/admin", payload)),
+  loginTeacher: async (payload) =>
+    unwrap(await apiClient.post("/auth/login/teacher", payload)),
+  loginStudent: async (payload) =>
+    unwrap(await apiClient.post("/auth/login/student", payload)),
 };
 
 export const teachersApi = {
@@ -41,6 +47,28 @@ export const studentsApi = {
     unwrap(await apiClient.post("/students", toFormData(payload))),
   update: async (id, payload) =>
     unwrap(await apiClient.put(`/students/${id}`, toFormData(payload))),
+  remove: async (id) => unwrap(await apiClient.delete(`/students/${id}`)),
+};
+
+export const studentApi = {
+  getMyProfile: async () => unwrap(await apiClient.get("/students/my/profile")),
+  getMyGroups: async () => unwrap(await apiClient.get("/students/my/groups")),
+  getMyGroupLessons: async (groupId) =>
+    unwrap(await apiClient.get(`/students/my/lessons/${groupId}`)),
+  getMyGroupLessonVideos: async (groupId) =>
+    unwrap(await apiClient.get(`/students/my/group/lessonVideo/${groupId}`)),
+  getMyGroupHomework: async (groupId, lessonId) =>
+    unwrap(
+      await apiClient.get(`/students/my/group/homework/${groupId}`, {
+        params: { lessonId },
+      }),
+    ),
+  submitHomeworkResponse: async (payload, file) =>
+    unwrap(await apiClient.post("/homework-response", toFormData({ ...payload, file }))),
+  updateHomeworkResponse: async (payload, file) =>
+    unwrap(await apiClient.put("/homework-response", toFormData({ ...payload, file }))),
+  updateMyProfile: async (payload) =>
+    unwrap(await apiClient.put("/students/my/profile", toFormData(payload))),
 };
 
 export const roomsApi = {
@@ -83,6 +111,8 @@ export const attendanceApi = {
 export const lessonsApi = {
   getByGroup: async (groupId) =>
     unwrap(await apiClient.get(`/lessons/group/${groupId}`)),
+  create: async (payload) =>
+    unwrap(await apiClient.post("/lessons", payload)),
 };
 
 export const homeworkApi = {
@@ -90,10 +120,13 @@ export const homeworkApi = {
     unwrap(await apiClient.get(`/homework/group/${groupId}`)),
   getByStatus: async (homeworkId, status) =>
     unwrap(
-      await apiClient.get(`/homework/${homeworkId}`, { params: { status } }),
+      await apiClient.get(`/homework/${homeworkId}`, {
+        params: { status },
+      }),
     ),
   getStatuses: async (homeworkId) => {
     const statuses = ["PENDING", "APPROVED", "REJECTED", "NOT_REVIEWED"];
+
     const results = await Promise.allSettled(
       statuses.map((status) => homeworkApi.getByStatus(homeworkId, status)),
     );
@@ -112,6 +145,15 @@ export const homeworkApi = {
   remove: async (id) => unwrap(await apiClient.delete(`/homework/${id}`)),
 };
 
+export const homeworkResultsApi = {
+  create: async (payload) =>
+    unwrap(await apiClient.post("/homework-results", payload)),
+  getByHomework: async (homeworkId) =>
+    unwrap(await apiClient.get(`/homework-results/homework/${homeworkId}`)),
+  update: async (id, payload) =>
+    unwrap(await apiClient.put(`/homework-results/${id}`, payload)),
+};
+
 export const lessonVideosApi = {
   getByGroup: async (groupId) =>
     unwrap(await apiClient.get(`/lesson-videos/${groupId}`)),
@@ -126,4 +168,11 @@ export const usersApi = {
   update: async (id, payload) =>
     unwrap(await apiClient.put(`/users/${id}`, toFormData(payload))),
   remove: async (id) => unwrap(await apiClient.delete(`/users/${id}`)),
+};
+
+export const studentGroupApi = {
+  create: async (payload) =>
+    unwrap(await apiClient.post("/student-group", payload)),
+  remove: async (payload) =>
+    unwrap(await apiClient.delete("/student-group", { data: payload })),
 };

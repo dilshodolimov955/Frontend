@@ -8,6 +8,7 @@ import GroupsPage from "./GroupsPage";
 import GroupDetailsPage from "./GroupDetrailsPage";
 import { coursesApi, groupsApi, studentsApi } from "../api/crmApi";
 import { getAuthUserFromStorage } from "../utils/authToken";
+import profileImage from "../assets/profile.jpg";
 
 const menuItems = [
   { id: 1, key: "home", icon: "🏠" },
@@ -22,8 +23,6 @@ const managementItems = [
   { id: 2, key: "rooms", icon: "🚪" },
   { id: 3, key: "employees", icon: "👤" },
   { id: 4, key: "teachers", icon: "👨‍🏫" },
-  { id: 5, key: "faq", icon: "❓" },
-  { id: 6, key: "inspection", icon: "🛡️" },
 ];
 
 const statsData = [
@@ -43,33 +42,6 @@ const WEEKDAY_ENUMS = [
   "SATURDAY",
 ];
 
-const defaultCourses = [
-  {
-    id: 1,
-    title: "Nemis tili",
-    description: "Izoh yo‘q",
-    durationMin: "60",
-    durationMonth: "12",
-    price: "300000",
-  },
-  {
-    id: 2,
-    title: "Math",
-    description: "Izoh yo‘q",
-    durationMin: "120",
-    durationMonth: "9",
-    price: "400000",
-  },
-  {
-    id: 3,
-    title: "SAT foundation",
-    description: "SAT matematika qismi 0 dan boshlab o‘rgatiladi",
-    durationMin: "60",
-    durationMonth: "6",
-    price: "350000",
-  },
-];
-
 const categories = [
   { id: 1, name: "Web dasturlash" },
   { id: 2, name: "English" },
@@ -81,37 +53,26 @@ const translations = {
   uz: {
     brand: "Najot Talim",
     greeting: "Salom",
-    welcome: "Najot Talim platformasiga xush kelibsiz",
     logout: "Chiqish",
     home: "Asosiy",
     teachers: "O‘qituvchilar",
     groups: "Guruhlar",
     students: "Talabalar",
-    management: "Boshqarish",
+    management: "Boshqaruv",
     courses: "Kurslar",
     rooms: "Xonalar",
     employees: "Hodimlar",
-    faq: "FAQ",
-    inspection: "Tekshiruv",
     activeStudents: "Faol talabalar",
     frozen: "Muzlatilganlar",
     archived: "Arxivdagilar",
-    monthlyPayments: "Joriy oy uchun to‘lovlar",
+    monthlyPayments: "Joriy oy to‘lovlari",
     paid: "To‘langan",
     pending: "Kutilmoqda",
     balance: "Qoldiq",
-    schedule: "Dars jadvali",
+    schedule: "Bugungi dars jadvali",
     noScheduleToday: "Bugun dars yo‘q",
-    active: "Faol",
     today: "Bugun",
-    teachersText: "Bu yerda o‘qituvchilar ro‘yxati chiqadi.",
-    groupsText: "Bu yerda guruhlar ro‘yxati chiqadi.",
-    studentsText: "Bu yerda talabalar ro‘yxati chiqadi.",
-    roomsText: "Bu yerda xonalar bo‘limi chiqadi.",
-    employeesText: "Bu yerda hodimlar bo‘limi chiqadi.",
-    faqText: "Bu yerda FAQ bo‘limi chiqadi.",
-    inspectionText: "Bu yerda tekshiruv bo‘limi chiqadi.",
-    addCourse: "Kurs qo'shish",
+    addCourse: "Kurs qo‘shish",
     editCourse: "Kursni tahrirlash",
     cancel: "Bekor qilish",
     save: "Saqlash",
@@ -125,13 +86,15 @@ const translations = {
     descriptionPlaceholder: "Kurs haqida qisqacha...",
     choose: "Tanlang",
     courseCategoriesTable: "Kurs kategoriyalari",
-    noComment: "Izoh yo'q",
-    menu: "Menu",
+    noComment: "Izoh yo‘q",
+    menu: "Boshqaruv menyusi",
+    profile: "Profil",
+    system: "Tizim boshqaruvi",
+    darkMode: "Tungi rejim",
   },
   en: {
     brand: "Najot Talim",
     greeting: "Hello",
-    welcome: "Welcome to Najot Talim platform",
     logout: "Logout",
     home: "Home",
     teachers: "Teachers",
@@ -141,8 +104,6 @@ const translations = {
     courses: "Courses",
     rooms: "Rooms",
     employees: "Employees",
-    faq: "FAQ",
-    inspection: "Inspection",
     activeStudents: "Active students",
     frozen: "Frozen",
     archived: "Archived",
@@ -150,17 +111,9 @@ const translations = {
     paid: "Paid",
     pending: "Pending",
     balance: "Balance",
-    schedule: "Class schedule",
+    schedule: "Today’s schedule",
     noScheduleToday: "No classes today",
-    active: "Active",
     today: "Today",
-    teachersText: "Teachers list will appear here.",
-    groupsText: "Groups list will appear here.",
-    studentsText: "Students list will appear here.",
-    roomsText: "Rooms section will appear here.",
-    employeesText: "Employees section will appear here.",
-    faqText: "FAQ section will appear here.",
-    inspectionText: "Inspection section will appear here.",
     addCourse: "Add course",
     editCourse: "Edit course",
     cancel: "Cancel",
@@ -176,12 +129,14 @@ const translations = {
     choose: "Select",
     courseCategoriesTable: "Course categories",
     noComment: "No description",
-    menu: "Menu",
+    menu: "Management menu",
+    profile: "Profile",
+    system: "System control",
+    darkMode: "Dark mode",
   },
   ru: {
     brand: "Najot Talim",
     greeting: "Здравствуйте",
-    welcome: "Добро пожаловать на платформу Najot Talim",
     logout: "Выйти",
     home: "Главная",
     teachers: "Учителя",
@@ -191,26 +146,16 @@ const translations = {
     courses: "Курсы",
     rooms: "Комнаты",
     employees: "Сотрудники",
-    faq: "FAQ",
-    inspection: "Проверка",
     activeStudents: "Активные студенты",
     frozen: "Замороженные",
     archived: "В архиве",
-    monthlyPayments: "Платежи за текущий месяц",
+    monthlyPayments: "Платежи за месяц",
     paid: "Оплачено",
     pending: "Ожидается",
     balance: "Остаток",
-    schedule: "Расписание занятий",
+    schedule: "Расписание на сегодня",
     noScheduleToday: "Сегодня занятий нет",
-    active: "Активный",
     today: "Сегодня",
-    teachersText: "Здесь будет список учителей.",
-    groupsText: "Здесь будет список групп.",
-    studentsText: "Здесь будет список студентов.",
-    roomsText: "Здесь будет раздел комнат.",
-    employeesText: "Здесь будет раздел сотрудников.",
-    faqText: "Здесь будет раздел FAQ.",
-    inspectionText: "Здесь будет раздел проверки.",
     addCourse: "Добавить курс",
     editCourse: "Редактировать курс",
     cancel: "Отмена",
@@ -224,9 +169,12 @@ const translations = {
     description: "Описание",
     descriptionPlaceholder: "Кратко о курсе...",
     choose: "Выберите",
-    courseCategoriesTable: "Категории курса",
+    courseCategoriesTable: "Категории курсов",
     noComment: "Нет описания",
-    menu: "Меню",
+    menu: "Меню управления",
+    profile: "Профиль",
+    system: "Управление системой",
+    darkMode: "Тёмный режим",
   },
 };
 
@@ -241,7 +189,7 @@ function InputField({
 }) {
   return (
     <div>
-      <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
+      <label className={`mb-2 block text-sm font-semibold ${theme.text}`}>
         {label}
       </label>
       <input
@@ -250,7 +198,7 @@ function InputField({
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className={`w-full rounded-xl border px-4 py-3 outline-none ${theme.input}`}
+        className={`w-full rounded-2xl border px-4 py-3 outline-none transition ${theme.input}`}
       />
     </div>
   );
@@ -259,14 +207,14 @@ function InputField({
 function SelectField({ label, name, value, onChange, items, theme, choose }) {
   return (
     <div>
-      <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
+      <label className={`mb-2 block text-sm font-semibold ${theme.text}`}>
         {label}
       </label>
       <select
         name={name}
         value={value}
         onChange={onChange}
-        className={`w-full rounded-xl border px-4 py-3 outline-none ${theme.input}`}
+        className={`w-full rounded-2xl border px-4 py-3 outline-none transition ${theme.input}`}
       >
         <option value="">{choose}</option>
         {items.map((item) => (
@@ -286,6 +234,7 @@ export default function DashboardPage({ initialMenu = "home" }) {
   const [activeManagement, setActiveManagement] = useState("courses");
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [showManagementPanel, setShowManagementPanel] = useState(false);
+  const [showProfilePanel, setShowProfilePanel] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [language, setLanguage] = useState("uz");
   const [showCourseDrawer, setShowCourseDrawer] = useState(false);
@@ -315,9 +264,12 @@ export default function DashboardPage({ initialMenu = "home" }) {
 
   const managementButtonRef = useRef(null);
   const managementPanelRef = useRef(null);
+  const profileButtonRef = useRef(null);
+  const profilePanelRef = useRef(null);
 
   const t = useMemo(() => translations[language], [language]);
   const authUser = useMemo(() => getAuthUserFromStorage(), []);
+
   const greetingName = useMemo(() => {
     const baseName =
       authUser?.fullName || authUser?.email?.split("@")[0] || "Foydalanuvchi";
@@ -329,7 +281,13 @@ export default function DashboardPage({ initialMenu = "home" }) {
 
     return baseName;
   }, [authUser]);
+
   const greetingText = `${t.greeting}, ${greetingName}!`;
+
+  const profileName = authUser?.fullName || "Dilshod Olimov";
+  const profileEmail = authUser?.email || "dilshodolimovv7@gmail.com";
+  const profileRole = authUser?.role || "ADMIN";
+  const profilePhoto = authUser?.photo || profileImage;
 
   const todaySchedule = useMemo(() => {
     const todayEnum = WEEKDAY_ENUMS[new Date().getDay()];
@@ -381,7 +339,7 @@ export default function DashboardPage({ initialMenu = "home" }) {
           description: course.description || t.noComment,
         })),
       );
-    } catch (error) {
+    } catch {
       setCourses([]);
     } finally {
       setCoursesLoading(false);
@@ -417,15 +375,11 @@ export default function DashboardPage({ initialMenu = "home" }) {
 
       setScheduleData({
         groups,
-        coursesById: Object.fromEntries(
-          courses.map((course) => [course.id, course]),
-        ),
+        coursesById: Object.fromEntries(courses.map((course) => [course.id, course])),
       });
 
       setDashboardStats({
-        activeStudents: students.filter(
-          (student) => student.status === "ACTIVE",
-        ).length,
+        activeStudents: students.filter((student) => student.status === "ACTIVE").length,
         groups: groups.length,
         frozen: groups.filter((group) => group.status === "FREEZE").length,
         archived: groups.filter((group) => group.status === "INACTIVE").length,
@@ -446,58 +400,72 @@ export default function DashboardPage({ initialMenu = "home" }) {
       ) {
         setShowManagementPanel(false);
       }
+
+      if (
+        showProfilePanel &&
+        profilePanelRef.current &&
+        !profilePanelRef.current.contains(event.target) &&
+        profileButtonRef.current &&
+        !profileButtonRef.current.contains(event.target)
+      ) {
+        setShowProfilePanel(false);
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showManagementPanel]);
+  }, [showManagementPanel, showProfilePanel]);
 
   const theme = darkMode
     ? {
         app: "bg-slate-950",
-        sidebar: "bg-slate-900 border-slate-800",
-        main: "bg-slate-950",
-        card: "bg-slate-900 border-slate-800",
+        appGradient: "from-slate-950 via-slate-950 to-violet-950/30",
+        sidebar: "border-white/10 bg-white/5 backdrop-blur-xl",
+        main: "",
+        card: "border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_80px_rgba(0,0,0,0.35)]",
         text: "text-white",
         soft: "text-slate-400",
         menu: "text-slate-200",
-        hover: "hover:bg-slate-800",
-        topBtn: "bg-slate-900 border-slate-700 text-white",
-        active: "bg-violet-600 text-white",
-        select: "bg-slate-900 border-slate-700 text-white",
-        subpanel: "bg-slate-900 border-slate-800",
-        submenuActive: "bg-violet-600 text-white",
+        hover: "hover:bg-white/10",
+        topBtn: "border-white/10 bg-white/10 text-white hover:bg-white/15",
+        active: "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-[0_12px_30px_rgba(139,92,246,0.35)]",
+        select: "border-white/10 bg-white/10 text-white",
+        subpanel: "border-white/10 bg-slate-950/95 backdrop-blur-2xl",
+        submenuActive: "bg-gradient-to-r from-violet-600/25 to-fuchsia-600/25 text-white border border-violet-400/20",
         submenuText: "text-slate-200",
-        rowBorder: "border-slate-700",
-        input:
-          "bg-slate-900 border-slate-700 text-white placeholder:text-slate-500",
-        overlay: "bg-black/50",
-        tab: "bg-slate-900 text-slate-300 border-slate-700",
-        tabActive: "bg-violet-600 text-white border-violet-600",
-        chip: "bg-slate-800 text-slate-300 border-slate-700",
+        rowBorder: "border-white/10",
+        input: "border-white/10 bg-white/5 text-white placeholder:text-slate-500 focus:border-violet-400",
+        overlay: "bg-slate-950/60 backdrop-blur-sm",
+        tab: "bg-white/5 text-slate-300 border-white/10",
+        tabActive: "bg-violet-600 text-white border-violet-500",
+        chip: "bg-white/5 text-slate-200 border-white/10",
+        tableHead: "bg-white/5",
+        drawer: "bg-slate-950 border-white/10 text-white",
       }
     : {
         app: "bg-slate-100",
-        sidebar: "bg-white border-slate-200",
-        main: "bg-slate-100",
-        card: "bg-white border-slate-200",
+        appGradient: "from-[#f8fafc] via-[#eef2ff] to-[#f5f3ff]",
+        sidebar: "border-white/60 bg-white/75 backdrop-blur-xl shadow-[0_10px_50px_rgba(15,23,42,0.08)]",
+        main: "",
+        card: "border-white/70 bg-white/80 backdrop-blur-xl shadow-[0_18px_60px_rgba(15,23,42,0.08)]",
         text: "text-slate-900",
         soft: "text-slate-500",
         menu: "text-slate-700",
         hover: "hover:bg-slate-100",
-        topBtn: "bg-white border-slate-200 text-slate-700",
-        active: "bg-violet-500 text-white",
-        select: "bg-white border-slate-200 text-slate-700",
-        subpanel: "bg-white border-slate-200",
-        submenuActive: "bg-violet-100 text-violet-700",
+        topBtn: "border-slate-200 bg-white/80 text-slate-700 hover:bg-white",
+        active: "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-[0_12px_30px_rgba(139,92,246,0.28)]",
+        select: "border-slate-200 bg-white/80 text-slate-700",
+        subpanel: "border-white/80 bg-white/95 backdrop-blur-2xl",
+        submenuActive: "bg-gradient-to-r from-violet-50 to-fuchsia-50 text-violet-700 border border-violet-100",
         submenuText: "text-slate-700",
         rowBorder: "border-slate-200",
-        input:
-          "bg-white border-slate-200 text-slate-900 placeholder:text-slate-400",
-        overlay: "bg-black/30",
+        input: "border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:border-violet-400",
+        overlay: "bg-slate-900/30 backdrop-blur-sm",
         tab: "bg-white text-slate-600 border-slate-200",
         tabActive: "bg-violet-100 text-violet-700 border-violet-200",
         chip: "bg-slate-50 text-slate-600 border-slate-200",
+        tableHead: "bg-slate-50/90",
+        drawer: "bg-white border-slate-200 text-slate-900",
       };
 
   const resetForm = () => {
@@ -581,52 +549,50 @@ export default function DashboardPage({ initialMenu = "home" }) {
       await coursesApi.remove(id);
       await loadCourses();
     } catch (error) {
-      alert(error?.response?.data?.message || "Kursni o'chirishda xato");
+      alert(error?.response?.data?.message || "Kursni o‘chirishda xato");
     }
   };
 
-  const renderBox = (title, text) => (
-    <div className={`${theme.card} border rounded-2xl p-8 shadow-sm`}>
-      <h2 className={`text-3xl font-bold mb-4 ${theme.text}`}>{title}</h2>
-      <p className={theme.soft}>{text}</p>
-    </div>
-  );
-
   const renderCoursesSection = () => {
     return (
-      <div className="space-y-6">
-        <div className={`${theme.card} border rounded-2xl p-5 shadow-sm`}>
-          <div className="flex items-center justify-between gap-4 flex-wrap mb-5">
-            <h2 className={`text-2xl font-bold ${theme.text}`}>{t.courses}</h2>
+      <div className="space-y-7">
+        <div className={`${theme.card} rounded-[28px] border p-6`}>
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className={`text-2xl font-black ${theme.text}`}>{t.courses}</h2>
+              <p className={`mt-1 text-sm ${theme.soft}`}>
+                Kurslarni zamonaviy boshqaruv panelidan nazorat qiling
+              </p>
+            </div>
 
             <button
               onClick={openAddDrawer}
-              className="bg-violet-600 hover:bg-violet-700 text-white px-5 py-3 rounded-xl font-medium"
+              className="rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-3 font-semibold text-white shadow-[0_14px_35px_rgba(139,92,246,0.35)] transition hover:scale-[1.02]"
             >
               + {t.addCourse}
             </button>
           </div>
 
-          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4 mt-5">
+          <div className="grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
             {coursesLoading && (
-              <div
-                className={`${theme.card} border rounded-2xl p-5 shadow-sm ${theme.soft}`}
-              >
+              <div className={`${theme.card} rounded-[24px] border p-5 ${theme.soft}`}>
                 Kurslar yuklanmoqda...
               </div>
             )}
+
             {!coursesLoading &&
               courses.map((course) => (
                 <div
                   key={course.id}
-                  className={`${theme.card} border rounded-2xl p-5 shadow-sm`}
+                  className={`${theme.card} group relative overflow-hidden rounded-[26px] border p-5 transition hover:-translate-y-1`}
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-violet-400/70 to-transparent" />
+                  <div className="absolute -right-12 -top-12 h-28 w-28 rounded-full bg-violet-500/10 blur-2xl" />
+
+                  <div className="relative flex items-start justify-between gap-3">
                     <div>
-                      <h3 className={`text-lg font-semibold ${theme.text}`}>
-                        {course.title}
-                      </h3>
-                      <p className={`text-sm mt-1 ${theme.soft}`}>
+                      <h3 className={`text-xl font-bold ${theme.text}`}>{course.title}</h3>
+                      <p className={`mt-1 text-sm leading-6 ${theme.soft}`}>
                         {course.description}
                       </p>
                     </div>
@@ -634,33 +600,27 @@ export default function DashboardPage({ initialMenu = "home" }) {
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleDeleteCourse(course.id)}
-                        className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-red-50"
+                        className="flex h-10 w-10 items-center justify-center rounded-2xl border border-red-200/60 bg-red-50/70 text-sm transition hover:scale-105"
                       >
                         🗑️
                       </button>
                       <button
                         onClick={() => openEditDrawer(course)}
-                        className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-50"
+                        className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200/70 bg-white/70 text-sm transition hover:scale-105"
                       >
                         ✏️
                       </button>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-2 mt-5">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs border ${theme.chip}`}
-                    >
+                  <div className="relative mt-6 flex flex-wrap gap-2">
+                    <span className={`rounded-full border px-3 py-1.5 text-xs ${theme.chip}`}>
                       {course.durationMin} min
                     </span>
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs border ${theme.chip}`}
-                    >
+                    <span className={`rounded-full border px-3 py-1.5 text-xs ${theme.chip}`}>
                       {course.durationMonth} oy
                     </span>
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs border ${theme.chip}`}
-                    >
+                    <span className={`rounded-full border px-3 py-1.5 text-xs ${theme.chip}`}>
                       {Number(course.price).toLocaleString()} so'm
                     </span>
                   </div>
@@ -669,24 +629,22 @@ export default function DashboardPage({ initialMenu = "home" }) {
           </div>
         </div>
 
-        <div className={`${theme.card} border rounded-2xl p-5 shadow-sm`}>
-          <h3 className={`text-xl font-semibold mb-4 ${theme.text}`}>
-            {t.courseCategoriesTable}
-          </h3>
+        <div className={`${theme.card} rounded-[28px] border p-6`}>
+          <h3 className={`mb-4 text-xl font-bold ${theme.text}`}>{t.courseCategoriesTable}</h3>
 
-          <div className="overflow-hidden rounded-xl border border-slate-200">
+          <div className={`overflow-hidden rounded-[24px] border ${theme.rowBorder}`}>
             <table className="w-full text-sm">
-              <thead className={darkMode ? "bg-slate-800" : "bg-slate-50"}>
+              <thead className={theme.tableHead}>
                 <tr>
-                  <th className={`text-left px-4 py-3 ${theme.text}`}>#</th>
-                  <th className={`text-left px-4 py-3 ${theme.text}`}>Nomi</th>
+                  <th className={`px-4 py-4 text-left font-bold ${theme.text}`}>#</th>
+                  <th className={`px-4 py-4 text-left font-bold ${theme.text}`}>Nomi</th>
                 </tr>
               </thead>
               <tbody>
                 {categories.map((item) => (
                   <tr key={item.id} className={`border-t ${theme.rowBorder}`}>
-                    <td className={`px-4 py-3 ${theme.text}`}>{item.id}</td>
-                    <td className={`px-4 py-3 ${theme.text}`}>{item.name}</td>
+                    <td className={`px-4 py-4 ${theme.text}`}>{item.id}</td>
+                    <td className={`px-4 py-4 ${theme.text}`}>{item.name}</td>
                   </tr>
                 ))}
               </tbody>
@@ -695,22 +653,21 @@ export default function DashboardPage({ initialMenu = "home" }) {
         </div>
 
         {showCourseDrawer && (
-          <div className={`fixed inset-0 z-50 ${theme.overlay}`}>
-            <div className="absolute inset-y-0 right-0 w-full max-w-107.5 bg-white shadow-2xl overflow-y-auto">
-              <div className="p-6 border-b border-slate-200 flex items-center justify-between">
-                <h2 className="text-xl font-bold text-slate-900">
+          <div className={`fixed inset-0 z-[120] ${theme.overlay}`}>
+            <div className={`absolute inset-y-0 right-0 w-full max-w-xl overflow-y-auto border-l shadow-2xl ${theme.drawer}`}>
+              <div className={`sticky top-0 z-10 flex items-center justify-between border-b px-6 py-5 backdrop-blur-xl ${theme.drawer}`}>
+                <h2 className="text-xl font-black">
                   {editingCourseId ? t.editCourse : t.addCourse}
                 </h2>
-
                 <button
                   onClick={closeDrawer}
-                  className="text-slate-500 text-xl"
+                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-xl"
                 >
                   ×
                 </button>
               </div>
 
-              <div className="p-6 space-y-5">
+              <div className="space-y-5 p-6">
                 <InputField
                   label={t.courseName}
                   name="title"
@@ -759,9 +716,7 @@ export default function DashboardPage({ initialMenu = "home" }) {
                 />
 
                 <div>
-                  <label
-                    className={`block text-sm font-medium mb-2 ${theme.text}`}
-                  >
+                  <label className={`mb-2 block text-sm font-semibold ${theme.text}`}>
                     {t.description}
                   </label>
                   <textarea
@@ -770,23 +725,22 @@ export default function DashboardPage({ initialMenu = "home" }) {
                     value={formData.description}
                     onChange={handleFormChange}
                     placeholder={t.descriptionPlaceholder}
-                    className={`w-full rounded-xl border px-4 py-3 outline-none resize-none ${theme.input}`}
+                    className={`w-full resize-none rounded-2xl border px-4 py-3 outline-none ${theme.input}`}
                   />
                 </div>
               </div>
 
-              <div className="p-6 border-t border-slate-200 flex justify-end gap-3">
+              <div className="flex justify-end gap-3 border-t p-6">
                 <button
                   onClick={closeDrawer}
-                  className="px-5 py-3 rounded-xl border border-slate-200 text-slate-600"
+                  className="rounded-2xl border border-slate-200 px-5 py-3 font-semibold"
                 >
                   {t.cancel}
                 </button>
-
                 <button
                   onClick={handleSaveCourse}
                   disabled={courseSaving}
-                  className="px-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-medium"
+                  className="rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-3 font-semibold text-white shadow-[0_14px_35px_rgba(139,92,246,0.35)]"
                 >
                   {courseSaving ? "Saqlanmoqda..." : t.save}
                 </button>
@@ -800,21 +754,11 @@ export default function DashboardPage({ initialMenu = "home" }) {
 
   const renderManagementContent = () => {
     if (activeManagement === "courses") return renderCoursesSection();
-    if (activeManagement === "rooms")
-      return <RoomsPage theme={theme} darkMode={darkMode} />;
-    if (activeManagement === "employees")
-      return <EmployeesPage theme={theme} darkMode={darkMode} />;
-    if (activeManagement === "teachers")
-      return (
-        <TeachersPage
-          theme={theme}
-          darkMode={darkMode}
-          currentUser={authUser}
-        />
-      );
-    if (activeManagement === "faq") return renderBox(t.faq, t.faqText);
-    if (activeManagement === "inspection")
-      return renderBox(t.inspection, t.inspectionText);
+    if (activeManagement === "rooms") return <RoomsPage theme={theme} darkMode={darkMode} />;
+    if (activeManagement === "employees") return <EmployeesPage theme={theme} darkMode={darkMode} />;
+    if (activeManagement === "teachers") {
+      return <TeachersPage theme={theme} darkMode={darkMode} currentUser={authUser} />;
+    }
     return null;
   };
 
@@ -837,68 +781,64 @@ export default function DashboardPage({ initialMenu = "home" }) {
     if (activeMenu === "home") {
       return (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
+          <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
             {statsData.map((item) => (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => handleStatCardClick(item.key)}
-                className={`${theme.card} border rounded-2xl p-5 shadow-sm text-left ${
+                className={`${theme.card} relative overflow-hidden rounded-[28px] border p-5 text-left transition hover:-translate-y-1 ${
                   {
-                    activeStudents: "cursor-pointer hover:shadow-md",
-                    groups: "cursor-pointer hover:shadow-md",
+                    activeStudents: "cursor-pointer",
+                    groups: "cursor-pointer",
                   }[item.key] || "cursor-default"
                 }`}
               >
-                <div className="text-3xl mb-3">{item.icon}</div>
-                <p className={`mb-2 text-sm ${theme.soft}`}>{t[item.key]}</p>
-                <h3 className={`text-3xl font-bold ${theme.text}`}>
-                  {dashboardStats[item.key] ?? 0}
-                </h3>
+                <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-violet-500/10 blur-2xl" />
+                <div className="relative">
+                  <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-2xl text-white shadow-[0_10px_30px_rgba(139,92,246,0.28)]">
+                    {item.icon}
+                  </div>
+                  <p className={`mb-2 text-sm ${theme.soft}`}>{t[item.key]}</p>
+                  <h3 className={`text-3xl font-black ${theme.text}`}>{dashboardStats[item.key] ?? 0}</h3>
+                </div>
               </button>
             ))}
           </div>
 
-          <div className="space-y-5">
-            <div className={`${theme.card} border rounded-2xl p-6 shadow-sm`}>
-              <h2 className={`text-2xl font-semibold mb-4 ${theme.text}`}>
-                {t.monthlyPayments}
-              </h2>
-
-              <div className="grid md:grid-cols-3 gap-4">
-                <div className="rounded-2xl bg-emerald-50 p-5">
-                  <p className="text-slate-500 mb-2">{t.paid}</p>
-                  <h3 className="text-2xl font-bold text-emerald-600">
-                    12 500 000 so‘m
-                  </h3>
+          <div className="grid gap-6 2xl:grid-cols-[1.25fr_0.75fr]">
+            <div className={`${theme.card} rounded-[30px] border p-6`}>
+              <div className="mb-5 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className={`text-2xl font-black ${theme.text}`}>{t.monthlyPayments}</h2>
+                  <p className={`mt-1 text-sm ${theme.soft}`}>{t.system}</p>
                 </div>
-
-                <div className="rounded-2xl bg-yellow-50 p-5">
-                  <p className="text-slate-500 mb-2">{t.pending}</p>
-                  <h3 className="text-2xl font-bold text-yellow-600">
-                    3 800 000 so‘m
-                  </h3>
+                <div className="rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_14px_35px_rgba(139,92,246,0.28)]">
+                  Live
                 </div>
+              </div>
 
-                <div className="rounded-2xl bg-red-50 p-5">
-                  <p className="text-slate-500 mb-2">{t.balance}</p>
-                  <h3 className="text-2xl font-bold text-red-500">
-                    2 100 000 so‘m
-                  </h3>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="rounded-[24px] border border-emerald-200/60 bg-emerald-50/90 p-5 shadow-sm">
+                  <p className="mb-2 text-slate-500">{t.paid}</p>
+                  <h3 className="text-2xl font-black text-emerald-600">12 500 000 so‘m</h3>
+                </div>
+                <div className="rounded-[24px] border border-amber-200/60 bg-amber-50/90 p-5 shadow-sm">
+                  <p className="mb-2 text-slate-500">{t.pending}</p>
+                  <h3 className="text-2xl font-black text-amber-600">3 800 000 so‘m</h3>
+                </div>
+                <div className="rounded-[24px] border border-rose-200/60 bg-rose-50/90 p-5 shadow-sm">
+                  <p className="mb-2 text-slate-500">{t.balance}</p>
+                  <h3 className="text-2xl font-black text-rose-500">2 100 000 so‘m</h3>
                 </div>
               </div>
             </div>
 
-            <div className={`${theme.card} border rounded-2xl p-6 shadow-sm`}>
-              <h2 className={`text-2xl font-semibold mb-4 ${theme.text}`}>
-                {t.schedule}
-              </h2>
-
-              <div className="space-y-4">
+            <div className={`${theme.card} rounded-[30px] border p-6`}>
+              <h2 className={`mb-4 text-2xl font-black ${theme.text}`}>{t.schedule}</h2>
+              <div className="space-y-3">
                 {todaySchedule.length === 0 && (
-                  <div
-                    className={`rounded-2xl border p-4 text-sm ${theme.rowBorder} ${theme.soft}`}
-                  >
+                  <div className={`rounded-[24px] border p-4 text-sm ${theme.rowBorder} ${theme.soft}`}>
                     {t.noScheduleToday}
                   </div>
                 )}
@@ -906,17 +846,15 @@ export default function DashboardPage({ initialMenu = "home" }) {
                 {todaySchedule.map((lesson) => (
                   <div
                     key={lesson.id}
-                    className={`flex items-center justify-between rounded-2xl border p-4 ${theme.rowBorder}`}
+                    className={`flex items-center justify-between rounded-[24px] border p-4 ${theme.rowBorder}`}
                   >
                     <div>
-                      <h3 className={`font-semibold text-lg ${theme.text}`}>
-                        {lesson.name}
-                      </h3>
+                      <h3 className={`text-lg font-bold ${theme.text}`}>{lesson.name}</h3>
                       <p className={theme.soft}>
                         {lesson.startTime} - {lesson.endTime}
                       </p>
                     </div>
-                    <span className="px-4 py-2 rounded-full bg-emerald-100 text-emerald-700 text-sm">
+                    <span className="rounded-full bg-emerald-100 px-4 py-2 text-sm font-semibold text-emerald-700">
                       {t.today}
                     </span>
                   </div>
@@ -928,14 +866,9 @@ export default function DashboardPage({ initialMenu = "home" }) {
       );
     }
 
-    if (activeMenu === "teachers")
-      return (
-        <TeachersPage
-          theme={theme}
-          darkMode={darkMode}
-          currentUser={authUser}
-        />
-      );
+    if (activeMenu === "teachers") {
+      return <TeachersPage theme={theme} darkMode={darkMode} currentUser={authUser} />;
+    }
 
     if (activeMenu === "groups") {
       if (selectedGroup) {
@@ -962,7 +895,7 @@ export default function DashboardPage({ initialMenu = "home" }) {
       );
     }
 
-    if (activeMenu === "students")
+    if (activeMenu === "students") {
       return (
         <StudentsPage
           theme={theme}
@@ -973,152 +906,233 @@ export default function DashboardPage({ initialMenu = "home" }) {
           }}
         />
       );
+    }
+
     if (activeMenu === "management") return renderManagementContent();
 
     return null;
   };
 
   return (
-    <div className={`min-h-screen flex ${theme.app}`}>
-      <aside
-        className={`relative w-60 border-r p-4 flex flex-col ${theme.sidebar}`}
-      >
-        <h1 className="text-2xl font-bold text-violet-600 mb-8">{t.brand}</h1>
+    <div className={`min-h-screen bg-gradient-to-br ${theme.appGradient} ${theme.app}`}>
+      <div className="relative flex min-h-screen">
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute left-[10%] top-0 h-72 w-72 rounded-full bg-violet-500/10 blur-3xl" />
+          <div className="absolute bottom-0 right-[10%] h-80 w-80 rounded-full bg-fuchsia-500/10 blur-3xl" />
+        </div>
 
-        <nav className="space-y-2">
-          {menuItems.map((item) => {
-            if (item.key === "management") {
+        <aside className={`relative z-20 m-4 flex w-[290px] flex-col rounded-[32px] border p-5 ${theme.sidebar}`}>
+          <div className="mb-8 flex items-center gap-3">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-600 text-2xl text-white shadow-[0_14px_35px_rgba(139,92,246,0.35)]">
+              N
+            </div>
+            <div>
+              <h1 className="text-3xl font-black tracking-tight text-violet-600">{t.brand}</h1>
+              <p className={`text-sm ${theme.soft}`}>CRM Dashboard</p>
+            </div>
+          </div>
+
+          <nav className="space-y-2.5">
+            {menuItems.map((item) => {
+              if (item.key === "management") {
+                return (
+                  <button
+                    key={item.id}
+                    ref={managementButtonRef}
+                    onClick={() => {
+                      setActiveMenu("management");
+                      setShowManagementPanel((prev) => !prev);
+                    }}
+                    className={`w-full rounded-[22px] px-4 py-3.5 text-left transition ${
+                      activeMenu === "management" ? theme.active : `${theme.menu} ${theme.hover}`
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg">{item.icon}</span>
+                        <span className="font-semibold">{t[item.key]}</span>
+                      </div>
+                      <span className="text-sm">{showManagementPanel ? "◂" : "▸"}</span>
+                    </div>
+                  </button>
+                );
+              }
+
               return (
                 <button
                   key={item.id}
-                  ref={managementButtonRef}
                   onClick={() => {
-                    setActiveMenu("management");
-                    setShowManagementPanel((prev) => !prev);
+                    setActiveMenu(item.key);
+                    setShowManagementPanel(false);
                   }}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl text-left transition cursor-pointer ${
-                    activeMenu === "management"
-                      ? theme.active
-                      : `${theme.menu} ${theme.hover}`
+                  className={`w-full rounded-[22px] px-4 py-3.5 text-left transition ${
+                    activeMenu === item.key ? theme.active : `${theme.menu} ${theme.hover}`
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <span>{item.icon}</span>
-                    <span className="font-medium">{t[item.key]}</span>
+                    <span className="text-lg">{item.icon}</span>
+                    <span className="font-semibold">{t[item.key]}</span>
                   </div>
-                  <span>{showManagementPanel ? "◂" : "▸"}</span>
                 </button>
               );
-            }
+            })}
+          </nav>
 
-            return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setActiveMenu(item.key);
-                  setShowManagementPanel(false);
-                }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-left transition cursor-pointer ${
-                  activeMenu === item.key
-                    ? theme.active
-                    : `${theme.menu} ${theme.hover}`
-                }`}
-              >
-                <span>{item.icon}</span>
-                <span className="font-medium">{t[item.key]}</span>
-              </button>
-            );
-          })}
-        </nav>
-
-        {showManagementPanel && (
-          <div
-            ref={managementPanelRef}
-            className={`absolute top-18 left-55 w-52.5 rounded-r-2xl rounded-bl-2xl border p-4 shadow-2xl z-30 ${theme.subpanel}`}
-          >
-            <div className="flex items-center gap-2 mb-4">
-              <button
-                onClick={() => setShowManagementPanel(false)}
-                className="w-7 h-7 rounded-md bg-violet-500 text-white flex items-center justify-center text-sm"
-              >
-                ‹
-              </button>
-              <h3 className={`text-lg font-semibold ${theme.text}`}>
-                {t.menu}
-              </h3>
-            </div>
-
-            <div className="space-y-2">
-              {managementItems.map((sub) => (
+          {showManagementPanel && (
+            <div
+              ref={managementPanelRef}
+              className={`absolute left-[calc(100%-6px)] top-[248px] z-[90] w-72 rounded-[28px] border p-4 shadow-[0_35px_80px_rgba(15,23,42,0.25)] ${theme.subpanel}`}
+            >
+              <div className="mb-4 flex items-center gap-3">
                 <button
-                  key={sub.id}
-                  onClick={() => {
-                    setActiveMenu("management");
-                    setActiveManagement(sub.key);
-                    setShowManagementPanel(false);
-                  }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition cursor-pointer ${
-                    activeManagement === sub.key && activeMenu === "management"
-                      ? theme.submenuActive
-                      : `${theme.submenuText} hover:bg-slate-100/70`
-                  }`}
+                  onClick={() => setShowManagementPanel(false)}
+                  className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-[0_12px_25px_rgba(139,92,246,0.35)]"
                 >
-                  <span>{sub.icon}</span>
-                  <span className="text-sm font-medium">{t[sub.key]}</span>
+                  ‹
                 </button>
-              ))}
+                <div>
+                  <h3 className={`text-lg font-black ${theme.text}`}>{t.menu}</h3>
+                  <p className={`text-xs ${theme.soft}`}>Quick management access</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {managementItems.map((sub) => (
+                  <button
+                    key={sub.id}
+                    onClick={() => {
+                      setActiveMenu("management");
+                      setActiveManagement(sub.key);
+                      setShowManagementPanel(false);
+                    }}
+                    className={`w-full rounded-[20px] border px-3.5 py-3 text-left transition ${
+                      activeManagement === sub.key && activeMenu === "management"
+                        ? theme.submenuActive
+                        : `border-transparent ${theme.submenuText} hover:bg-slate-100/70`
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg">{sub.icon}</span>
+                      <span className="font-semibold">{t[sub.key]}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        <button
-          onClick={() => navigate("/")}
-          className="mt-auto bg-red-500 hover:bg-red-600 text-white py-3 rounded-2xl cursor-pointer transition"
-        >
-          {t.logout}
-        </button>
-      </aside>
-
-      <main className={`flex-1 p-8 ${theme.main}`}>
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
-          <h1 className="text-2xl font-bold text-violet-600">{t.brand}</h1>
-
-          <h2 className={`text-xl md:text-2xl font-semibold ${theme.text}`}>
-            {greetingText}
-          </h2>
-
-          <div className="flex items-center gap-3">
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              className={`border rounded-xl px-4 py-2 outline-none ${theme.select}`}
-            >
-              <option value="uz">O'zbekcha</option>
-              <option value="en">English</option>
-              <option value="ru">Русский</option>
-            </select>
+          <div className={`mt-auto rounded-[26px] border p-4 ${theme.card}`}>
+            <div className="flex items-center gap-3">
+              <img src={profilePhoto} alt="Profile" className="h-14 w-14 rounded-2xl object-cover" />
+              <div className="min-w-0">
+                <p className={`truncate font-bold ${theme.text}`}>{profileName}</p>
+                <p className={`truncate text-xs ${theme.soft}`}>{profileEmail}</p>
+              </div>
+            </div>
 
             <button
-              className={`w-10 h-10 flex items-center justify-center rounded-xl border cursor-pointer ${theme.topBtn}`}
+              onClick={() => navigate("/")}
+              className="mt-4 w-full rounded-2xl bg-gradient-to-r from-rose-500 to-red-500 py-3 font-semibold text-white shadow-[0_14px_35px_rgba(239,68,68,0.28)] transition hover:scale-[1.01]"
             >
-              🔔
+              {t.logout}
             </button>
-
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className={`w-10 h-10 flex items-center justify-center rounded-xl border cursor-pointer ${theme.topBtn}`}
-            >
-              {darkMode ? "☀️" : "🌙"}
-            </button>
-
-            <div className="w-10 h-10 rounded-full bg-amber-900 text-white flex items-center justify-center font-bold cursor-pointer">
-              D
-            </div>
           </div>
-        </div>
+        </aside>
 
-        {renderContent()}
-      </main>
+        <main className={`relative z-10 flex-1 p-4 pl-0 ${theme.main}`}>
+          <div className={`${theme.card} rounded-[32px] border p-5 md:p-6`}>
+            <div className="mb-8 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.25em] text-violet-500">Najot Talim</p>
+                <h2 className={`mt-2 text-3xl font-black ${theme.text}`}>{greetingText}</h2>
+              </div>
+
+              <div className="relative flex flex-wrap items-center gap-3">
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  className={`rounded-2xl border px-4 py-3 outline-none ${theme.select}`}
+                >
+                  <option value="uz">O'zbekcha</option>
+                  <option value="en">English</option>
+                  <option value="ru">Русский</option>
+                </select>
+
+                <button
+                  className={`flex h-12 w-12 items-center justify-center rounded-2xl border transition ${theme.topBtn}`}
+                >
+                  🔔
+                </button>
+
+                <button
+                  onClick={() => setDarkMode(!darkMode)}
+                  className={`flex h-12 items-center gap-2 rounded-2xl border px-4 font-semibold transition ${theme.topBtn}`}
+                >
+                  <span>{darkMode ? "☀️" : "🌙"}</span>
+                  <span>{t.darkMode}</span>
+                </button>
+
+                <button
+                  ref={profileButtonRef}
+                  onClick={() => setShowProfilePanel((prev) => !prev)}
+                  className="group relative"
+                >
+                  <div className="rounded-[22px] bg-gradient-to-r from-violet-600 to-fuchsia-600 p-[2px] shadow-[0_14px_35px_rgba(139,92,246,0.35)] transition group-hover:scale-105">
+                    <img
+                      src={profilePhoto}
+                      alt="User"
+                      className="h-14 w-14 rounded-[20px] object-cover"
+                    />
+                  </div>
+                </button>
+
+                {showProfilePanel && (
+                  <div
+                    ref={profilePanelRef}
+                    className={`absolute right-0 top-[78px] z-[95] w-[340px] overflow-hidden rounded-[28px] border shadow-[0_35px_80px_rgba(15,23,42,0.25)] ${theme.subpanel}`}
+                  >
+                    <div className="relative overflow-hidden p-5">
+                      <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-r from-violet-600 to-fuchsia-600" />
+                      <div className="relative mt-8 flex items-end gap-4">
+                        <img
+                          src={profilePhoto}
+                          alt="Profile"
+                          className="h-24 w-24 rounded-[26px] border-4 border-white object-cover shadow-xl"
+                        />
+                        <div className="pb-1">
+                          <p className="text-sm font-semibold text-white/90">{t.profile}</p>
+                          <h3 className="text-xl font-black text-white">{profileName}</h3>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 p-5 pt-2">
+                      <div className={`rounded-[22px] border p-4 ${theme.card}`}>
+                        <p className={`text-xs uppercase tracking-[0.2em] ${theme.soft}`}>Email</p>
+                        <p className={`mt-1 font-semibold ${theme.text}`}>{profileEmail}</p>
+                      </div>
+
+                      <div className={`rounded-[22px] border p-4 ${theme.card}`}>
+                        <p className={`text-xs uppercase tracking-[0.2em] ${theme.soft}`}>Role</p>
+                        <p className={`mt-1 font-semibold ${theme.text}`}>{profileRole}</p>
+                      </div>
+
+                      <button
+                        onClick={() => navigate("/")}
+                        className="w-full rounded-2xl bg-gradient-to-r from-rose-500 to-red-500 py-3 font-semibold text-white shadow-[0_14px_35px_rgba(239,68,68,0.28)]"
+                      >
+                        {t.logout}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {renderContent()}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
