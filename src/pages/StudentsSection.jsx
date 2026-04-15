@@ -207,14 +207,9 @@ export default function StudentsPage({ theme, darkMode }) {
             <h2 className={`text-2xl md:text-3xl font-bold ${theme.text}`}>
               O‘quvchilar
             </h2>
-            <div className="flex gap-4 mt-4 text-sm">
-              <button className="px-4 py-2 rounded-xl bg-violet-100 text-violet-700 font-medium">
-                Faol o‘quvchilar
-              </button>
-              <button className={`px-4 py-2 rounded-xl border ${theme.input}`}>
-                Arxiv
-              </button>
-            </div>
+            <p className={`text-sm font-medium ${theme.soft} mt-2`}>
+              Faol o'quvchilar ro'yxati
+            </p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">

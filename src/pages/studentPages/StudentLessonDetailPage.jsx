@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useId, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { studentApi } from "../../api/crmApi";
 import {
@@ -7,21 +7,33 @@ import {
   cn,
   StatusBadge,
   formatDateTime,
+  deriveHomeworkDueDate,
   getLessonStatusLabel,
   VideoPreview,
   Icons,
 } from "./studentPortalShared";
 
-const { FileText, Calendar, PlayCircle, ExternalLink, ArrowLeft, Sparkles } =
+const { FileText, Calendar, PlayCircle, ExternalLink, ArrowLeft, Sparkles, AlertCircle } =
   Icons;
 
 function HomeworkSubmitForm({ homework, onSubmitted }) {
   const { t, darkMode } = useStudentPortal();
+  const fileInputId = useId();
   const [comment, setComment] = useState(homework?.submissionText || "");
   const [file, setFile] = useState(null);
   const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
+
+  const ratingSummary = useMemo(() => {
+    if (!rating) return null;
+    const stars = "★".repeat(rating) + "☆".repeat(5 - rating);
+    return {
+      text: `Siz darsni ${rating} yulduz bilan baholadingiz`,
+      stars,
+    };
+  }, [rating]);
 
   useEffect(() => {
     setComment(homework?.submissionText || "");
@@ -30,6 +42,10 @@ function HomeworkSubmitForm({ homework, onSubmitted }) {
   useEffect(() => {
     setRating(Number(homework?.submissionRating || 0));
   }, [homework?.id, homework?.submissionRating]);
+
+  useEffect(() => {
+    setHoverRating(0);
+  }, [homework?.id]);
 
   const handleFileChange = (event) => {
     const selectedFile = event.target.files?.[0] || null;
@@ -84,12 +100,19 @@ function HomeworkSubmitForm({ homework, onSubmitted }) {
   return (
     <div
       className={cn(
-        "rounded-3xl border p-4 sm:p-5",
+        "relative overflow-hidden rounded-3xl border p-4 sm:p-5",
         darkMode
-          ? "border-slate-800 bg-linear-to-r from-slate-950 to-slate-900"
-          : "border-slate-200 bg-linear-to-r from-white to-violet-50"
+          ? "border-slate-800 bg-linear-to-br from-slate-950 via-slate-900 to-slate-950"
+          : "border-slate-200 bg-linear-to-br from-white via-violet-50 to-fuchsia-50"
       )}
     >
+      <div
+        className={cn(
+          "pointer-events-none absolute -right-14 -top-14 h-36 w-36 rounded-full blur-2xl",
+          darkMode ? "bg-violet-500/18" : "bg-violet-300/60"
+        )}
+      />
+
       <div className="mb-4 flex items-center gap-2">
         <FileText className="h-4 w-4 text-violet-500" />
         <p className={cn("text-[13px] font-bold", darkMode ? "text-white" : "text-slate-900")}>
@@ -98,19 +121,41 @@ function HomeworkSubmitForm({ homework, onSubmitted }) {
       </div>
 
       <div className="space-y-4">
+        {ratingSummary ? (
+          <div
+            className={cn(
+              "rounded-2xl border px-4 py-3",
+              darkMode
+                ? "border-violet-500/30 bg-linear-to-r from-violet-500/10 via-fuchsia-500/10 to-pink-500/10"
+                : "border-violet-200 bg-linear-to-r from-violet-50 via-fuchsia-50 to-pink-50"
+            )}
+          >
+            <p className={cn("text-sm font-semibold", darkMode ? "text-violet-200" : "text-violet-700")}>
+              {ratingSummary.text}
+            </p>
+            <p className="mt-1 text-lg tracking-[0.18em] text-amber-500">{ratingSummary.stars}</p>
+          </div>
+        ) : null}
+
         <div>
           <label className={cn("block text-sm font-semibold", darkMode ? "text-slate-200" : "text-slate-700")}>
             Student darsni baholang
           </label>
-          <div className="mt-2 flex items-center gap-1">
+          <div className="mt-2 flex items-center gap-1.5">
             {[1, 2, 3, 4, 5].map((star) => (
               <button
                 key={star}
                 type="button"
                 onClick={() => setRating(star)}
+                onMouseEnter={() => setHoverRating(star)}
+                onMouseLeave={() => setHoverRating(0)}
                 className={cn(
-                  "text-2xl leading-none transition",
-                  star <= rating ? "text-amber-500" : darkMode ? "text-slate-600 hover:text-slate-400" : "text-slate-300 hover:text-slate-500"
+                  "text-[30px] leading-none transition duration-200",
+                  star <= (hoverRating || rating)
+                    ? "scale-110 text-amber-500"
+                    : darkMode
+                    ? "text-slate-600 hover:text-slate-400"
+                    : "text-slate-300 hover:text-slate-500"
                 )}
                 aria-label={`${star} yulduz`}
               >
@@ -118,6 +163,9 @@ function HomeworkSubmitForm({ homework, onSubmitted }) {
               </button>
             ))}
           </div>
+          <p className={cn("mt-1 text-[12px]", darkMode ? "text-slate-400" : "text-slate-500")}>
+            Tanlov: {rating || 0}/5
+          </p>
         </div>
 
         <div>
@@ -129,10 +177,10 @@ function HomeworkSubmitForm({ homework, onSubmitted }) {
             onChange={(e) => setComment(e.target.value)}
             placeholder="Uyga vazifa uchun izohni kiriting..."
             className={cn(
-              "mt-2 min-h-30 w-full rounded-2xl border p-3 text-sm outline-none transition",
+              "mt-2 min-h-32 w-full rounded-2xl border p-3 text-sm outline-none transition",
               darkMode
-                ? "border-slate-700 bg-slate-950 text-slate-100 focus:border-violet-400"
-                : "border-slate-300 bg-white text-slate-900 focus:border-violet-400"
+                ? "border-slate-700 bg-slate-950/80 text-slate-100 focus:border-violet-400 focus:ring-3 focus:ring-violet-500/25"
+                : "border-slate-300 bg-white/90 text-slate-900 focus:border-violet-400 focus:ring-3 focus:ring-violet-200"
             )}
           />
         </div>
@@ -141,39 +189,69 @@ function HomeworkSubmitForm({ homework, onSubmitted }) {
           <label className={cn("block text-sm font-semibold", darkMode ? "text-slate-200" : "text-slate-700")}>
             {t.selectFile}
           </label>
-          <input
-            type="file"
-            onChange={handleFileChange}
+          <input id={fileInputId} type="file" onChange={handleFileChange} className="hidden" />
+          <label
+            htmlFor={fileInputId}
             className={cn(
-              "mt-2 w-full rounded-xl border px-3 py-2 text-sm",
+              "mt-2 flex w-full cursor-pointer items-center justify-between gap-3 rounded-2xl border border-dashed px-4 py-3 text-sm transition",
               darkMode
-                ? "border-slate-700 bg-slate-950 text-slate-100"
-                : "border-slate-300 bg-white text-slate-700"
+                ? "border-violet-500/40 bg-slate-950/80 text-slate-200 hover:border-violet-400"
+                : "border-violet-300 bg-white/90 text-slate-700 hover:border-violet-500"
             )}
-          />
+          >
+            <span className="flex min-w-0 items-center gap-2.5">
+              <span
+                className={cn(
+                  "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-base",
+                  darkMode ? "bg-violet-500/20" : "bg-violet-100"
+                )}
+              >
+                📎
+              </span>
+              <span className="truncate">
+                {file ? file.name : "Faylni tanlang yoki bu yerga bosing"}
+              </span>
+            </span>
+            <span
+              className={cn(
+                "shrink-0 rounded-xl px-3 py-1.5 text-[12px] font-semibold",
+                darkMode ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"
+              )}
+            >
+              Browse
+            </span>
+          </label>
+          <p className={cn("mt-2 text-[12px]", darkMode ? "text-slate-400" : "text-slate-500")}>
+            PNG, JPG, PDF yoki DOC fayl yuklashingiz mumkin.
+          </p>
           {file ? (
-            <p className={cn("mt-2 text-[12px]", darkMode ? "text-slate-300" : "text-slate-600")}>
+            <p className={cn("mt-2 text-[12px] font-medium", darkMode ? "text-emerald-300" : "text-emerald-700")}>
               {t.selectedFile}: {file.name}
             </p>
           ) : null}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <button
             type="button"
             onClick={handleSubmit}
             disabled={submitting}
             className={cn(
-              "rounded-2xl px-5 py-3 text-sm font-bold transition",
+              "rounded-2xl px-5 py-3 text-sm font-bold transition active:scale-[0.99]",
               darkMode
-                ? "bg-linear-to-r from-violet-600 to-fuchsia-500 text-white hover:opacity-90"
-                : "bg-linear-to-r from-violet-500 to-fuchsia-500 text-white hover:opacity-90"
+                ? "bg-linear-to-r from-violet-600 via-fuchsia-500 to-pink-500 text-white hover:opacity-90"
+                : "bg-linear-to-r from-violet-500 via-fuchsia-500 to-pink-500 text-white shadow-lg shadow-violet-300/50 hover:opacity-90"
             )}
           >
             {submitting ? t.submitting : t.finishSubmit}
           </button>
           {message ? (
-            <span className={cn("text-sm", darkMode ? "text-slate-300" : "text-slate-700")}>
+            <span
+              className={cn(
+                "rounded-xl px-3 py-2 text-sm",
+                darkMode ? "bg-slate-800 text-slate-300" : "bg-white/80 text-slate-700 ring-1 ring-slate-200"
+              )}
+            >
               {message}
             </span>
           ) : null}
@@ -282,6 +360,10 @@ export default function StudentLessonDetailPage() {
   }, [groupId, lessonId, initialLesson]);
 
   const firstHomework = useMemo(() => homeworkList[0] || null, [homeworkList]);
+  const highlightedDeadline = useMemo(() => {
+    const dueDate = deriveHomeworkDueDate(firstHomework);
+    return dueDate ? formatDateTime(dueDate, language) : null;
+  }, [firstHomework, language]);
   const [groupLessons, setGroupLessons] = useState([]);
 
   useEffect(() => {
@@ -401,6 +483,20 @@ export default function StudentLessonDetailPage() {
         ) : (
           <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
             <div className="space-y-4">
+              {highlightedDeadline ? (
+                <div
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-5 py-4 text-base font-semibold",
+                    darkMode
+                      ? "border border-red-500/40 bg-red-500/20 text-red-100"
+                      : "bg-orange-600 text-white"
+                  )}
+                >
+                  <AlertCircle className="h-5 w-5 shrink-0" />
+                  <span>Uyga vazifa muddati: {highlightedDeadline}</span>
+                </div>
+              ) : null}
+
               <div
                 className={cn(
                   "rounded-3xl border p-4",
@@ -534,7 +630,7 @@ export default function StudentLessonDetailPage() {
                   )}
                 >
                   <p className={cn("mb-2 text-[13px] font-bold", darkMode ? "text-white" : "text-slate-900")}>
-                    Admin izohi
+                    O'qituvchi izohi
                   </p>
                   <p className={cn("text-sm leading-6", darkMode ? "text-slate-300" : "text-slate-700")}>
                     {firstHomework.comment}
@@ -612,7 +708,7 @@ export default function StudentLessonDetailPage() {
                   {t.lessons}
                 </p>
 
-                <div className="max-h-[520px] space-y-2 overflow-y-auto pr-1">
+                <div className="max-h-130 space-y-2 overflow-y-auto pr-1">
                   {sidebarLessons.length > 0 ? (
                     sidebarLessons.map((item) => {
                       const active = String(item.id) === String(lessonId);

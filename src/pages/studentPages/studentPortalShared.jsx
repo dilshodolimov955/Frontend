@@ -593,14 +593,16 @@ export function VideoPreview({ video, t }) {
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-2xl border",
+        "w-full overflow-hidden rounded-2xl border",
         darkMode ? "border-slate-800 bg-slate-950" : "border-slate-200 bg-white"
       )}
     >
       {isDirectVideo ? (
-        <video controls className="h-auto w-full">
-          <source src={videoUrl} />
-        </video>
+        <div className="relative w-full overflow-hidden bg-black" style={{ aspectRatio: "16 / 9", maxHeight: "62vh" }}>
+          <video controls className="h-full w-full object-contain">
+            <source src={videoUrl} />
+          </video>
+        </div>
       ) : (
         <div className="p-4">
           <a

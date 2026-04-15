@@ -29,7 +29,23 @@ const statsData = [
   { id: 1, key: "activeStudents", icon: "🎓" },
   { id: 2, key: "groups", icon: "👥" },
   { id: 3, key: "frozen", icon: "❄️" },
-  { id: 4, key: "archived", icon: "🗂️" },
+];
+
+const percent = (value, total) => {
+  if (!total) return 0;
+  return Math.round((value / total) * 100);
+};
+
+const paymentBreakdown = [
+  { key: "paid", value: 12500000, color: "from-emerald-500 to-teal-500" },
+  { key: "pending", value: 3800000, color: "from-amber-500 to-orange-500" },
+  { key: "balance", value: 2100000, color: "from-rose-500 to-red-500" },
+];
+
+const modeOptions = [
+  { key: "light", label: "Light", icon: "☀️" },
+  { key: "dark", label: "Dark", icon: "🌙" },
+  { key: "neon", label: "Neon", icon: "⚡" },
 ];
 
 const WEEKDAY_ENUMS = [
@@ -106,7 +122,6 @@ const translations = {
     employees: "Employees",
     activeStudents: "Active students",
     frozen: "Frozen",
-    archived: "Archived",
     monthlyPayments: "Monthly payments",
     paid: "Paid",
     pending: "Pending",
@@ -148,7 +163,6 @@ const translations = {
     employees: "Сотрудники",
     activeStudents: "Активные студенты",
     frozen: "Замороженные",
-    archived: "В архиве",
     monthlyPayments: "Платежи за месяц",
     paid: "Оплачено",
     pending: "Ожидается",
@@ -227,7 +241,7 @@ function SelectField({ label, name, value, onChange, items, theme, choose }) {
   );
 }
 
-export default function DashboardPage({ initialMenu = "home" }) {
+export default function DashboardPage({ initialMenu = "home", panelMode = "admin" }) {
   const navigate = useNavigate();
 
   const [activeMenu, setActiveMenu] = useState(initialMenu);
@@ -235,7 +249,7 @@ export default function DashboardPage({ initialMenu = "home" }) {
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [showManagementPanel, setShowManagementPanel] = useState(false);
   const [showProfilePanel, setShowProfilePanel] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
+  const [themeMode, setThemeMode] = useState("light");
   const [language, setLanguage] = useState("uz");
   const [showCourseDrawer, setShowCourseDrawer] = useState(false);
   const [editingCourseId, setEditingCourseId] = useState(null);
@@ -247,12 +261,21 @@ export default function DashboardPage({ initialMenu = "home" }) {
     activeStudents: 0,
     groups: 0,
     frozen: 0,
-    archived: 0,
+    totalStudents: 0,
+    activeGroups: 0,
+    totalGroups: 0,
   });
   const [scheduleData, setScheduleData] = useState({
     groups: [],
     coursesById: {},
   });
+
+  const totalPayments = useMemo(
+    () => paymentBreakdown.reduce((sum, item) => sum + item.value, 0),
+    [],
+  );
+
+  const darkMode = themeMode !== "light";
 
   const [formData, setFormData] = useState({
     title: "",
@@ -269,6 +292,26 @@ export default function DashboardPage({ initialMenu = "home" }) {
 
   const t = useMemo(() => translations[language], [language]);
   const authUser = useMemo(() => getAuthUserFromStorage(), []);
+  const isTeacherPanel = panelMode === "teacher" || authUser?.role === "TEACHER";
+  const visibleMenuItems = useMemo(() => {
+    if (isTeacherPanel) {
+      return menuItems.filter((item) => ["home", "groups"].includes(item.key));
+    }
+    return menuItems;
+  }, [isTeacherPanel]);
+
+  useEffect(() => {
+    if (authUser?.role === "TEACHER" && panelMode !== "teacher") {
+      navigate("/teacher", { replace: true });
+    }
+  }, [authUser?.role, navigate, panelMode]);
+
+  useEffect(() => {
+    if (!isTeacherPanel) return;
+    if (!["home", "groups"].includes(activeMenu)) {
+      setActiveMenu("groups");
+    }
+  }, [activeMenu, isTeacherPanel]);
 
   const greetingName = useMemo(() => {
     const baseName =
@@ -324,6 +367,57 @@ export default function DashboardPage({ initialMenu = "home" }) {
       .sort((a, b) => String(a.startTime).localeCompare(String(b.startTime)));
   }, [scheduleData]);
 
+  const trendCards = useMemo(
+    () => [
+      {
+        id: "conversion",
+        title: "Konversiya",
+        value: `${percent(dashboardStats.activeStudents, Math.max(dashboardStats.totalStudents, 1))}%`,
+        note: "Faol talaba ulushi",
+        tone: "from-emerald-500 to-teal-500",
+      },
+      {
+        id: "groupHealth",
+        title: "Guruh holati",
+        value: `${percent(dashboardStats.activeGroups, Math.max(dashboardStats.totalGroups, 1))}%`,
+        note: "Aktiv guruhlar",
+        tone: "from-cyan-500 to-blue-500",
+      },
+      {
+        id: "load",
+        title: "Bandlik",
+        value: `${Math.min(95, 30 + todaySchedule.length * 12)}%`,
+        note: "Bugungi jadval yuklamasi",
+        tone: "from-violet-500 to-fuchsia-500",
+      },
+    ],
+    [dashboardStats.activeGroups, dashboardStats.activeStudents, dashboardStats.totalGroups, dashboardStats.totalStudents, todaySchedule.length],
+  );
+
+  const recentActivities = useMemo(
+    () => [
+      {
+        id: 1,
+        title: "Yangi guruhlar monitoringi",
+        description: `${dashboardStats.groups} ta guruh nazoratda`,
+        time: "Hozir",
+      },
+      {
+        id: 2,
+        title: "Dars jadvali sinxronlandi",
+        description: `${todaySchedule.length} ta dars bugungi ro'yxatda`,
+        time: "12 daqiqa oldin",
+      },
+      {
+        id: 3,
+        title: "Talabalar ko'rsatkichlari yangilandi",
+        description: `${dashboardStats.activeStudents} faol talaba`,
+        time: "38 daqiqa oldin",
+      },
+    ],
+    [dashboardStats.activeStudents, dashboardStats.groups, todaySchedule.length],
+  );
+
   const loadCourses = async () => {
     try {
       setCoursesLoading(true);
@@ -367,6 +461,10 @@ export default function DashboardPage({ initialMenu = "home" }) {
         groupsRes.status === "fulfilled" && Array.isArray(groupsRes.value?.data)
           ? groupsRes.value.data
           : [];
+      const visibleGroups =
+        authUser?.role === "TEACHER"
+          ? groups.filter((group) => Number(group.teacherId) === Number(authUser?.id))
+          : groups;
       const courses =
         coursesRes.status === "fulfilled" &&
         Array.isArray(coursesRes.value?.data)
@@ -374,20 +472,22 @@ export default function DashboardPage({ initialMenu = "home" }) {
           : [];
 
       setScheduleData({
-        groups,
+        groups: visibleGroups,
         coursesById: Object.fromEntries(courses.map((course) => [course.id, course])),
       });
 
       setDashboardStats({
         activeStudents: students.filter((student) => student.status === "ACTIVE").length,
-        groups: groups.length,
-        frozen: groups.filter((group) => group.status === "FREEZE").length,
-        archived: groups.filter((group) => group.status === "INACTIVE").length,
+        groups: visibleGroups.length,
+        frozen: visibleGroups.filter((group) => group.status === "FREEZE").length,
+        totalStudents: students.length,
+        activeGroups: visibleGroups.filter((group) => group.status === "ACTIVE").length,
+        totalGroups: visibleGroups.length,
       });
     };
 
     loadDashboardStats();
-  }, []);
+  }, [authUser?.id, authUser?.role]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -416,57 +516,94 @@ export default function DashboardPage({ initialMenu = "home" }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showManagementPanel, showProfilePanel]);
 
-  const theme = darkMode
-    ? {
-        app: "bg-slate-950",
-        appGradient: "from-slate-950 via-slate-950 to-violet-950/30",
-        sidebar: "border-white/10 bg-white/5 backdrop-blur-xl",
-        main: "",
-        card: "border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_80px_rgba(0,0,0,0.35)]",
-        text: "text-white",
-        soft: "text-slate-400",
-        menu: "text-slate-200",
-        hover: "hover:bg-white/10",
-        topBtn: "border-white/10 bg-white/10 text-white hover:bg-white/15",
-        active: "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-[0_12px_30px_rgba(139,92,246,0.35)]",
-        select: "border-white/10 bg-white/10 text-white",
-        subpanel: "border-white/10 bg-slate-950/95 backdrop-blur-2xl",
-        submenuActive: "bg-gradient-to-r from-violet-600/25 to-fuchsia-600/25 text-white border border-violet-400/20",
-        submenuText: "text-slate-200",
-        rowBorder: "border-white/10",
-        input: "border-white/10 bg-white/5 text-white placeholder:text-slate-500 focus:border-violet-400",
-        overlay: "bg-slate-950/60 backdrop-blur-sm",
-        tab: "bg-white/5 text-slate-300 border-white/10",
-        tabActive: "bg-violet-600 text-white border-violet-500",
-        chip: "bg-white/5 text-slate-200 border-white/10",
-        tableHead: "bg-white/5",
-        drawer: "bg-slate-950 border-white/10 text-white",
-      }
-    : {
-        app: "bg-slate-100",
-        appGradient: "from-[#f8fafc] via-[#eef2ff] to-[#f5f3ff]",
-        sidebar: "border-white/60 bg-white/75 backdrop-blur-xl shadow-[0_10px_50px_rgba(15,23,42,0.08)]",
-        main: "",
-        card: "border-white/70 bg-white/80 backdrop-blur-xl shadow-[0_18px_60px_rgba(15,23,42,0.08)]",
-        text: "text-slate-900",
-        soft: "text-slate-500",
-        menu: "text-slate-700",
-        hover: "hover:bg-slate-100",
-        topBtn: "border-slate-200 bg-white/80 text-slate-700 hover:bg-white",
-        active: "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-[0_12px_30px_rgba(139,92,246,0.28)]",
-        select: "border-slate-200 bg-white/80 text-slate-700",
-        subpanel: "border-white/80 bg-white/95 backdrop-blur-2xl",
-        submenuActive: "bg-gradient-to-r from-violet-50 to-fuchsia-50 text-violet-700 border border-violet-100",
-        submenuText: "text-slate-700",
-        rowBorder: "border-slate-200",
-        input: "border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:border-violet-400",
-        overlay: "bg-slate-900/30 backdrop-blur-sm",
-        tab: "bg-white text-slate-600 border-slate-200",
-        tabActive: "bg-violet-100 text-violet-700 border-violet-200",
-        chip: "bg-slate-50 text-slate-600 border-slate-200",
-        tableHead: "bg-slate-50/90",
-        drawer: "bg-white border-slate-200 text-slate-900",
-      };
+  const themePalette = {
+    light: {
+      app: "bg-slate-100",
+      appGradient: "from-[#f8fafc] via-[#eef2ff] to-[#f5f3ff]",
+      sidebar: "border-white/60 bg-white/75 backdrop-blur-xl shadow-[0_10px_50px_rgba(15,23,42,0.08)]",
+      main: "",
+      card: "border-white/70 bg-white/80 backdrop-blur-xl shadow-[0_18px_60px_rgba(15,23,42,0.08)]",
+      text: "text-slate-900",
+      soft: "text-slate-500",
+      menu: "text-slate-700",
+      hover: "hover:bg-slate-100",
+      topBtn: "border-slate-200 bg-white/80 text-slate-700 hover:bg-white",
+      active: "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-[0_12px_30px_rgba(139,92,246,0.28)]",
+      select: "border-slate-200 bg-white/80 text-slate-700",
+      subpanel: "border-white/80 bg-white/95 backdrop-blur-2xl",
+      submenuActive: "bg-gradient-to-r from-violet-50 to-fuchsia-50 text-violet-700 border border-violet-100",
+      submenuText: "text-slate-700",
+      rowBorder: "border-slate-200",
+      input: "border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:border-violet-400",
+      overlay: "bg-slate-900/30 backdrop-blur-sm",
+      tab: "bg-white text-slate-600 border-slate-200",
+      tabActive: "bg-violet-100 text-violet-700 border-violet-200",
+      chip: "bg-slate-50 text-slate-600 border-slate-200",
+      tableHead: "bg-slate-50/90",
+      drawer: "bg-white border-slate-200 text-slate-900",
+      accentText: "text-violet-600",
+      accentBg: "from-violet-600 to-fuchsia-600",
+      modeRing: "ring-violet-300/70",
+    },
+    dark: {
+      app: "bg-slate-950",
+      appGradient: "from-slate-950 via-slate-950 to-violet-950/30",
+      sidebar: "border-white/10 bg-white/5 backdrop-blur-xl",
+      main: "",
+      card: "border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_20px_80px_rgba(0,0,0,0.35)]",
+      text: "text-white",
+      soft: "text-slate-400",
+      menu: "text-slate-200",
+      hover: "hover:bg-white/10",
+      topBtn: "border-white/10 bg-white/10 text-white hover:bg-white/15",
+      active: "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-[0_12px_30px_rgba(139,92,246,0.35)]",
+      select: "border-white/10 bg-white/10 text-white",
+      subpanel: "border-white/10 bg-slate-950/95 backdrop-blur-2xl",
+      submenuActive: "bg-gradient-to-r from-violet-600/25 to-fuchsia-600/25 text-white border border-violet-400/20",
+      submenuText: "text-slate-200",
+      rowBorder: "border-white/10",
+      input: "border-white/10 bg-white/5 text-white placeholder:text-slate-500 focus:border-violet-400",
+      overlay: "bg-slate-950/60 backdrop-blur-sm",
+      tab: "bg-white/5 text-slate-300 border-white/10",
+      tabActive: "bg-violet-600 text-white border-violet-500",
+      chip: "bg-white/5 text-slate-200 border-white/10",
+      tableHead: "bg-white/5",
+      drawer: "bg-slate-950 border-white/10 text-white",
+      accentText: "text-violet-300",
+      accentBg: "from-violet-500 to-fuchsia-500",
+      modeRing: "ring-violet-500/60",
+    },
+    neon: {
+      app: "bg-[#050816]",
+      appGradient: "from-[#050816] via-[#071225] to-[#031b1c]",
+      sidebar: "border-cyan-400/20 bg-[#071327]/80 backdrop-blur-xl shadow-[0_15px_70px_rgba(6,182,212,0.16)]",
+      main: "",
+      card: "border-cyan-400/20 bg-[#08172c]/75 backdrop-blur-xl shadow-[0_20px_80px_rgba(6,182,212,0.14)]",
+      text: "text-cyan-50",
+      soft: "text-cyan-200/70",
+      menu: "text-cyan-100/90",
+      hover: "hover:bg-cyan-400/10",
+      topBtn: "border-cyan-300/20 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-400/20",
+      active: "bg-gradient-to-r from-cyan-500 to-lime-400 text-[#04202a] shadow-[0_14px_35px_rgba(34,211,238,0.35)]",
+      select: "border-cyan-300/20 bg-cyan-500/10 text-cyan-50",
+      subpanel: "border-cyan-400/20 bg-[#071327]/95 backdrop-blur-2xl",
+      submenuActive: "bg-gradient-to-r from-cyan-500/25 to-lime-400/25 text-cyan-50 border border-cyan-400/30",
+      submenuText: "text-cyan-100/90",
+      rowBorder: "border-cyan-400/20",
+      input: "border-cyan-300/20 bg-cyan-500/10 text-cyan-50 placeholder:text-cyan-200/50 focus:border-cyan-300",
+      overlay: "bg-[#020617]/60 backdrop-blur-sm",
+      tab: "bg-cyan-500/10 text-cyan-100 border-cyan-300/20",
+      tabActive: "bg-cyan-400/25 text-cyan-50 border-cyan-300/40",
+      chip: "bg-cyan-500/10 text-cyan-100 border-cyan-300/20",
+      tableHead: "bg-cyan-500/10",
+      drawer: "bg-[#050f1f] border-cyan-400/20 text-cyan-50",
+      accentText: "text-cyan-300",
+      accentBg: "from-cyan-500 to-lime-400",
+      modeRing: "ring-cyan-300/70",
+    },
+  };
+
+  const theme = themePalette[themeMode];
 
   const resetForm = () => {
     setEditingCourseId(null);
@@ -567,7 +704,7 @@ export default function DashboardPage({ initialMenu = "home" }) {
 
             <button
               onClick={openAddDrawer}
-              className="rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-3 font-semibold text-white shadow-[0_14px_35px_rgba(139,92,246,0.35)] transition hover:scale-[1.02]"
+              className="rounded-2xl bg-linear-to-r from-violet-600 to-fuchsia-600 px-5 py-3 font-semibold text-white shadow-[0_14px_35px_rgba(139,92,246,0.35)] transition hover:scale-[1.02]"
             >
               + {t.addCourse}
             </button>
@@ -575,7 +712,7 @@ export default function DashboardPage({ initialMenu = "home" }) {
 
           <div className="grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
             {coursesLoading && (
-              <div className={`${theme.card} rounded-[24px] border p-5 ${theme.soft}`}>
+              <div className={`${theme.card} rounded-3xl border p-5 ${theme.soft}`}>
                 Kurslar yuklanmoqda...
               </div>
             )}
@@ -586,7 +723,7 @@ export default function DashboardPage({ initialMenu = "home" }) {
                   key={course.id}
                   className={`${theme.card} group relative overflow-hidden rounded-[26px] border p-5 transition hover:-translate-y-1`}
                 >
-                  <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-violet-400/70 to-transparent" />
+                  <div className="absolute inset-x-8 top-0 h-px bg-linear-to-r from-transparent via-violet-400/70 to-transparent" />
                   <div className="absolute -right-12 -top-12 h-28 w-28 rounded-full bg-violet-500/10 blur-2xl" />
 
                   <div className="relative flex items-start justify-between gap-3">
@@ -632,7 +769,7 @@ export default function DashboardPage({ initialMenu = "home" }) {
         <div className={`${theme.card} rounded-[28px] border p-6`}>
           <h3 className={`mb-4 text-xl font-bold ${theme.text}`}>{t.courseCategoriesTable}</h3>
 
-          <div className={`overflow-hidden rounded-[24px] border ${theme.rowBorder}`}>
+          <div className={`overflow-hidden rounded-3xl border ${theme.rowBorder}`}>
             <table className="w-full text-sm">
               <thead className={theme.tableHead}>
                 <tr>
@@ -653,7 +790,7 @@ export default function DashboardPage({ initialMenu = "home" }) {
         </div>
 
         {showCourseDrawer && (
-          <div className={`fixed inset-0 z-[120] ${theme.overlay}`}>
+          <div className={`fixed inset-0 z-120 ${theme.overlay}`}>
             <div className={`absolute inset-y-0 right-0 w-full max-w-xl overflow-y-auto border-l shadow-2xl ${theme.drawer}`}>
               <div className={`sticky top-0 z-10 flex items-center justify-between border-b px-6 py-5 backdrop-blur-xl ${theme.drawer}`}>
                 <h2 className="text-xl font-black">
@@ -740,7 +877,7 @@ export default function DashboardPage({ initialMenu = "home" }) {
                 <button
                   onClick={handleSaveCourse}
                   disabled={courseSaving}
-                  className="rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-3 font-semibold text-white shadow-[0_14px_35px_rgba(139,92,246,0.35)]"
+                  className="rounded-2xl bg-linear-to-r from-violet-600 to-fuchsia-600 px-5 py-3 font-semibold text-white shadow-[0_14px_35px_rgba(139,92,246,0.35)]"
                 >
                   {courseSaving ? "Saqlanmoqda..." : t.save}
                 </button>
@@ -781,84 +918,335 @@ export default function DashboardPage({ initialMenu = "home" }) {
     if (activeMenu === "home") {
       return (
         <>
-          <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mb-5 grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+            <div className={`${theme.card} relative overflow-hidden rounded-[30px] border p-5 xl:p-6`}>
+              <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-cyan-500/20 blur-3xl" />
+              <div className="absolute -bottom-12 left-20 h-36 w-36 rounded-full bg-violet-500/20 blur-3xl" />
+
+              <div className="relative flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className={`text-xs font-bold uppercase tracking-[0.3em] ${theme.accentText}`}>
+                    Command Center
+                  </p>
+                  <h3 className={`mt-2 text-3xl font-black ${theme.text}`}>
+                    Real vaqt monitoring
+                  </h3>
+                  <p className={`mt-2 text-sm ${theme.soft}`}>
+                    KPI, to'lov, guruhlar va jadval bir joyda boshqariladi.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => {
+                      setActiveMenu("groups");
+                      setSelectedGroup(null);
+                    }}
+                    className={`rounded-2xl border px-4 py-2.5 text-sm font-semibold transition ${theme.topBtn}`}
+                  >
+                    + Guruhlar
+                  </button>
+                  {!isTeacherPanel && (
+                    <button
+                      onClick={() => {
+                        setActiveMenu("students");
+                        setSelectedGroup(null);
+                      }}
+                      className={`rounded-2xl border px-4 py-2.5 text-sm font-semibold transition ${theme.topBtn}`}
+                    >
+                      + Talabalar
+                    </button>
+                  )}
+                  {!isTeacherPanel && (
+                    <button
+                      onClick={() => {
+                        setActiveMenu("management");
+                        setActiveManagement("courses");
+                      }}
+                      className="rounded-2xl bg-linear-to-r from-violet-600 to-fuchsia-600 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(139,92,246,0.28)]"
+                    >
+                      + Kurs qo'shish
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="relative mt-5 grid gap-3 sm:grid-cols-3">
+                {trendCards.map((card) => (
+                  <div
+                    key={card.id}
+                    className={`rounded-3xl border p-4 ${darkMode ? "border-white/10 bg-white/5" : "border-white/80 bg-white/70"}`}
+                  >
+                    <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${theme.soft}`}>
+                      {card.title}
+                    </p>
+                    <h4 className={`mt-2 text-2xl font-black ${theme.text}`}>{card.value}</h4>
+                    <p className={`mt-1 text-xs ${theme.soft}`}>{card.note}</p>
+                    <div className={`mt-3 h-2 overflow-hidden rounded-full ${darkMode ? "bg-white/10" : "bg-slate-100"}`}>
+                      <div
+                        className={`h-full rounded-full bg-linear-to-r ${card.tone}`}
+                        style={{ width: card.value }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className={`${theme.card} rounded-[30px] border p-5 xl:p-6`}>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h3 className={`text-2xl font-black ${theme.text}`}>Activity Feed</h3>
+                <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-bold text-emerald-400">
+                  LIVE
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {recentActivities.map((activity) => (
+                  <div
+                    key={activity.id}
+                    className={`rounded-2xl border p-4 ${darkMode ? "border-white/10 bg-white/5" : "border-slate-200 bg-white/80"}`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className={`font-semibold ${theme.text}`}>{activity.title}</p>
+                      <span className={`text-xs ${theme.soft}`}>{activity.time}</span>
+                    </div>
+                    <p className={`mt-1 text-sm ${theme.soft}`}>{activity.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {statsData.map((item) => (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => handleStatCardClick(item.key)}
-                className={`${theme.card} relative overflow-hidden rounded-[28px] border p-5 text-left transition hover:-translate-y-1 ${
+                className={`${theme.card} group relative overflow-hidden rounded-[28px] border p-5 text-left transition hover:-translate-y-1.5 ${
                   {
                     activeStudents: "cursor-pointer",
                     groups: "cursor-pointer",
                   }[item.key] || "cursor-default"
                 }`}
               >
-                <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-violet-500/10 blur-2xl" />
+                <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-violet-500/15 blur-2xl transition group-hover:scale-110" />
                 <div className="relative">
-                  <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-2xl text-white shadow-[0_10px_30px_rgba(139,92,246,0.28)]">
+                  <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br ${theme.accentBg} text-2xl text-white shadow-[0_10px_30px_rgba(139,92,246,0.28)]`}>
                     {item.icon}
                   </div>
                   <p className={`mb-2 text-sm ${theme.soft}`}>{t[item.key]}</p>
                   <h3 className={`text-3xl font-black ${theme.text}`}>{dashboardStats[item.key] ?? 0}</h3>
+
+                  <div className="mt-4 space-y-2">
+                    <div className={`h-2 w-full overflow-hidden rounded-full ${darkMode ? "bg-white/10" : "bg-slate-100"}`}>
+                      <div
+                        className="h-full rounded-full bg-linear-to-r from-violet-500 to-fuchsia-500"
+                        style={{
+                          width: `${
+                            item.key === "activeStudents"
+                              ? percent(
+                                  dashboardStats.activeStudents,
+                                  dashboardStats.totalStudents,
+                                )
+                              : item.key === "groups"
+                              ? 100
+                              : item.key === "frozen"
+                              ? percent(dashboardStats.frozen, dashboardStats.totalGroups)
+                              : 0
+                          }%`,
+                        }}
+                      />
+                    </div>
+
+                    <p className={`text-xs font-semibold ${theme.soft}`}>
+                      {item.key === "activeStudents"
+                        ? `${
+                            percent(
+                              dashboardStats.activeStudents,
+                              dashboardStats.totalStudents,
+                            )
+                          }% faol`
+                        : item.key === "groups"
+                        ? `${dashboardStats.totalGroups || 0} ta guruh`
+                        : item.key === "frozen"
+                        ? `${percent(dashboardStats.frozen, dashboardStats.totalGroups)}% muzlatilgan`
+                        : ""}
+                    </p>
+                  </div>
                 </div>
               </button>
             ))}
           </div>
 
-          <div className="grid gap-6 2xl:grid-cols-[1.25fr_0.75fr]">
-            <div className={`${theme.card} rounded-[30px] border p-6`}>
+          <div className="grid gap-5 2xl:grid-cols-[1.15fr_0.85fr]">
+            <div className={`${theme.card} rounded-[30px] border p-5 xl:p-6`}>
               <div className="mb-5 flex items-center justify-between gap-3">
                 <div>
                   <h2 className={`text-2xl font-black ${theme.text}`}>{t.monthlyPayments}</h2>
                   <p className={`mt-1 text-sm ${theme.soft}`}>{t.system}</p>
                 </div>
-                <div className="rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_14px_35px_rgba(139,92,246,0.28)]">
-                  Live
+                <div className={`rounded-full bg-linear-to-r ${theme.accentBg} px-4 py-2 text-sm font-semibold text-white shadow-[0_14px_35px_rgba(139,92,246,0.28)]`}>
+                  Premium
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="rounded-[24px] border border-emerald-200/60 bg-emerald-50/90 p-5 shadow-sm">
-                  <p className="mb-2 text-slate-500">{t.paid}</p>
-                  <h3 className="text-2xl font-black text-emerald-600">12 500 000 so‘m</h3>
+              <div className="grid gap-4 md:grid-cols-[1fr_180px]">
+                <div className="grid gap-3 sm:grid-cols-3 md:grid-cols-1 xl:grid-cols-3">
+                  {paymentBreakdown.map((item) => {
+                    const valuePercent = percent(item.value, totalPayments);
+
+                    return (
+                      <div
+                        key={item.key}
+                        className={`rounded-3xl border p-4 shadow-sm ${
+                          item.key === "paid"
+                            ? darkMode
+                              ? "border-emerald-500/20 bg-emerald-500/10"
+                              : "border-emerald-200/60 bg-emerald-50/90"
+                            : item.key === "pending"
+                            ? darkMode
+                              ? "border-amber-500/20 bg-amber-500/10"
+                              : "border-amber-200/60 bg-amber-50/90"
+                            : darkMode
+                            ? "border-rose-500/20 bg-rose-500/10"
+                            : "border-rose-200/60 bg-rose-50/90"
+                        }`}
+                      >
+                        <div className="mb-2 flex items-center justify-between gap-3">
+                          <p className="text-sm text-slate-500">{t[item.key]}</p>
+                          <span className="text-xs font-bold text-slate-400">{valuePercent}%</span>
+                        </div>
+                        <h3
+                          className={`text-xl font-black ${
+                            item.key === "paid"
+                              ? "text-emerald-600"
+                              : item.key === "pending"
+                              ? "text-amber-600"
+                              : "text-rose-500"
+                          }`}
+                        >
+                          {item.value.toLocaleString()} so‘m
+                        </h3>
+                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/60">
+                          <div
+                            className={`h-full rounded-full bg-linear-to-r ${item.color}`}
+                            style={{ width: `${Math.max(valuePercent, 8)}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="rounded-[24px] border border-amber-200/60 bg-amber-50/90 p-5 shadow-sm">
-                  <p className="mb-2 text-slate-500">{t.pending}</p>
-                  <h3 className="text-2xl font-black text-amber-600">3 800 000 so‘m</h3>
-                </div>
-                <div className="rounded-[24px] border border-rose-200/60 bg-rose-50/90 p-5 shadow-sm">
-                  <p className="mb-2 text-slate-500">{t.balance}</p>
-                  <h3 className="text-2xl font-black text-rose-500">2 100 000 so‘m</h3>
+
+                <div className={`rounded-3xl border p-4 ${darkMode ? "border-white/10 bg-white/5" : "border-slate-200 bg-white"}`}>
+                  <p className={`text-sm font-semibold ${theme.soft}`}>To‘lovlar grafigi</p>
+                  <div className="mt-4 flex h-48 items-end gap-3 rounded-2xl bg-linear-to-b from-white/70 to-slate-50/70 p-4">
+                    {paymentBreakdown.map((item) => {
+                      const valuePercent = percent(item.value, totalPayments);
+
+                      return (
+                        <div key={item.key} className="flex flex-1 flex-col items-center gap-2">
+                          <div
+                            className={`w-full rounded-t-2xl bg-linear-to-t ${item.color} shadow-[0_10px_25px_rgba(0,0,0,0.08)]`}
+                            style={{ height: `${Math.max(valuePercent * 1.2, 24)}%` }}
+                          />
+                          <span className={`text-xs font-semibold ${theme.soft}`}>{t[item.key]}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className={`${theme.card} rounded-[30px] border p-6`}>
-              <h2 className={`mb-4 text-2xl font-black ${theme.text}`}>{t.schedule}</h2>
-              <div className="space-y-3">
-                {todaySchedule.length === 0 && (
-                  <div className={`rounded-[24px] border p-4 text-sm ${theme.rowBorder} ${theme.soft}`}>
-                    {t.noScheduleToday}
-                  </div>
-                )}
-
-                {todaySchedule.map((lesson) => (
-                  <div
-                    key={lesson.id}
-                    className={`flex items-center justify-between rounded-[24px] border p-4 ${theme.rowBorder}`}
-                  >
-                    <div>
-                      <h3 className={`text-lg font-bold ${theme.text}`}>{lesson.name}</h3>
-                      <p className={theme.soft}>
-                        {lesson.startTime} - {lesson.endTime}
-                      </p>
+            <div className="space-y-5">
+              <div className={`${theme.card} rounded-[30px] border p-5 xl:p-6`}>
+                <h2 className={`mb-4 text-2xl font-black ${theme.text}`}>{t.schedule}</h2>
+                <div className="max-h-52 space-y-3 overflow-y-auto pr-1">
+                  {todaySchedule.length === 0 && (
+                    <div className={`rounded-3xl border p-4 text-sm ${theme.rowBorder} ${theme.soft}`}>
+                      {t.noScheduleToday}
                     </div>
-                    <span className="rounded-full bg-emerald-100 px-4 py-2 text-sm font-semibold text-emerald-700">
-                      {t.today}
-                    </span>
+                  )}
+
+                  {todaySchedule.map((lesson) => (
+                    <div
+                      key={lesson.id}
+                      className={`flex items-center justify-between rounded-3xl border p-4 ${theme.rowBorder}`}
+                    >
+                      <div>
+                        <h3 className={`text-lg font-bold ${theme.text}`}>{lesson.name}</h3>
+                        <p className={theme.soft}>
+                          {lesson.startTime} - {lesson.endTime}
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-emerald-100 px-4 py-2 text-sm font-semibold text-emerald-700">
+                        {t.today}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className={`${theme.card} rounded-[30px] border p-5 xl:p-6`}>
+                <div className="mb-5 flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className={`text-2xl font-black ${theme.text}`}>Guruhlar bo‘yicha foizlar</h2>
+                    <p className={`mt-1 text-sm ${theme.soft}`}>Holat taqsimoti ko‘rinishda</p>
                   </div>
-                ))}
+                  <div className="rounded-full bg-linear-to-r from-emerald-500 to-cyan-500 px-4 py-2 text-sm font-semibold text-white shadow-[0_14px_35px_rgba(16,185,129,0.22)]">
+                    {dashboardStats.totalGroups || 0} ta guruh
+                  </div>
+                </div>
+
+                <div className="grid gap-3">
+                  {[
+                    {
+                      label: "Aktiv",
+                      value: dashboardStats.activeGroups,
+                      total: dashboardStats.totalGroups,
+                      color: "from-emerald-500 to-teal-500",
+                      bg: darkMode ? "bg-emerald-500/10" : "bg-emerald-50",
+                    },
+                    {
+                      label: "Muzlatilgan",
+                      value: dashboardStats.frozen,
+                      total: dashboardStats.totalGroups,
+                      color: "from-amber-500 to-orange-500",
+                      bg: darkMode ? "bg-amber-500/10" : "bg-amber-50",
+                    },
+                    {
+                      label: "Muzlatilgan",
+                      value: dashboardStats.frozen,
+                      total: dashboardStats.totalGroups,
+                      color: "from-rose-500 to-red-500",
+                      bg: darkMode ? "bg-rose-500/10" : "bg-rose-50",
+                    },
+                  ].map((item) => {
+                    const valuePercent = percent(item.value, item.total);
+
+                    return (
+                      <div
+                        key={item.label}
+                        className={`rounded-3xl border p-4 ${item.bg} ${darkMode ? "border-white/10" : "border-slate-200"}`}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <p className={`text-sm font-semibold ${theme.soft}`}>{item.label}</p>
+                          <span className="text-xs font-bold text-slate-400">{valuePercent}%</span>
+                        </div>
+                        <p className={`mt-2 text-2xl font-black ${theme.text}`}>{item.value}</p>
+                        <div className={`mt-3 h-2 overflow-hidden rounded-full ${darkMode ? "bg-white/10" : "bg-white"}`}>
+                          <div
+                            className={`h-full rounded-full bg-linear-to-r ${item.color}`}
+                            style={{ width: `${valuePercent}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>
@@ -867,6 +1255,7 @@ export default function DashboardPage({ initialMenu = "home" }) {
     }
 
     if (activeMenu === "teachers") {
+      if (isTeacherPanel) return null;
       return <TeachersPage theme={theme} darkMode={darkMode} currentUser={authUser} />;
     }
 
@@ -896,6 +1285,7 @@ export default function DashboardPage({ initialMenu = "home" }) {
     }
 
     if (activeMenu === "students") {
+      if (isTeacherPanel) return null;
       return (
         <StudentsPage
           theme={theme}
@@ -908,33 +1298,37 @@ export default function DashboardPage({ initialMenu = "home" }) {
       );
     }
 
-    if (activeMenu === "management") return renderManagementContent();
+    if (activeMenu === "management") {
+      if (isTeacherPanel) return null;
+      return renderManagementContent();
+    }
 
     return null;
   };
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br ${theme.appGradient} ${theme.app}`}>
-      <div className="relative flex min-h-screen">
+    <div className={`h-screen overflow-hidden bg-linear-to-br ${theme.appGradient} ${theme.app}`}>
+      <div className="relative flex h-full min-h-0">
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute left-[10%] top-0 h-72 w-72 rounded-full bg-violet-500/10 blur-3xl" />
           <div className="absolute bottom-0 right-[10%] h-80 w-80 rounded-full bg-fuchsia-500/10 blur-3xl" />
         </div>
 
-        <aside className={`relative z-20 m-4 flex w-[290px] flex-col rounded-[32px] border p-5 ${theme.sidebar}`}>
-          <div className="mb-8 flex items-center gap-3">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-600 text-2xl text-white shadow-[0_14px_35px_rgba(139,92,246,0.35)]">
+        <aside className={`relative z-20 m-4 flex h-[calc(100vh-2rem)] w-64 flex-col overflow-visible rounded-4xl border p-4 ${theme.sidebar}`}>
+          <div className="mb-6 flex items-center gap-3">
+            <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br ${theme.accentBg} text-xl text-white shadow-[0_14px_35px_rgba(139,92,246,0.35)]`}>
               N
             </div>
             <div>
-              <h1 className="text-3xl font-black tracking-tight text-violet-600">{t.brand}</h1>
-              <p className={`text-sm ${theme.soft}`}>CRM Dashboard</p>
+              <h1 className={`text-[34px] leading-none font-black tracking-tight ${theme.accentText}`}>{t.brand}</h1>
+              <p className={`text-xs ${theme.soft}`}>CRM Dashboard</p>
             </div>
           </div>
 
-          <nav className="space-y-2.5">
-            {menuItems.map((item) => {
+          <nav className="space-y-2">
+            {visibleMenuItems.map((item) => {
               if (item.key === "management") {
+                if (isTeacherPanel) return null;
                 return (
                   <button
                     key={item.id}
@@ -943,14 +1337,14 @@ export default function DashboardPage({ initialMenu = "home" }) {
                       setActiveMenu("management");
                       setShowManagementPanel((prev) => !prev);
                     }}
-                    className={`w-full rounded-[22px] px-4 py-3.5 text-left transition ${
+                    className={`w-full rounded-2xl px-3.5 py-3 text-left transition ${
                       activeMenu === "management" ? theme.active : `${theme.menu} ${theme.hover}`
                     }`}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <span className="text-lg">{item.icon}</span>
-                        <span className="font-semibold">{t[item.key]}</span>
+                        <span className="text-base">{item.icon}</span>
+                        <span className="text-[17px] font-semibold">{t[item.key]}</span>
                       </div>
                       <span className="text-sm">{showManagementPanel ? "◂" : "▸"}</span>
                     </div>
@@ -965,28 +1359,28 @@ export default function DashboardPage({ initialMenu = "home" }) {
                     setActiveMenu(item.key);
                     setShowManagementPanel(false);
                   }}
-                  className={`w-full rounded-[22px] px-4 py-3.5 text-left transition ${
+                  className={`w-full rounded-2xl px-3.5 py-3 text-left transition ${
                     activeMenu === item.key ? theme.active : `${theme.menu} ${theme.hover}`
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-lg">{item.icon}</span>
-                    <span className="font-semibold">{t[item.key]}</span>
+                    <span className="text-base">{item.icon}</span>
+                    <span className="text-[17px] font-semibold">{t[item.key]}</span>
                   </div>
                 </button>
               );
             })}
           </nav>
 
-          {showManagementPanel && (
+          {showManagementPanel && !isTeacherPanel && (
             <div
               ref={managementPanelRef}
-              className={`absolute left-[calc(100%-6px)] top-[248px] z-[90] w-72 rounded-[28px] border p-4 shadow-[0_35px_80px_rgba(15,23,42,0.25)] ${theme.subpanel}`}
+              className={`absolute left-[calc(100%-6px)] top-62 z-110 w-64 rounded-3xl border p-3.5 shadow-[0_35px_80px_rgba(15,23,42,0.25)] ${theme.subpanel}`}
             >
               <div className="mb-4 flex items-center gap-3">
                 <button
                   onClick={() => setShowManagementPanel(false)}
-                  className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-[0_12px_25px_rgba(139,92,246,0.35)]"
+                  className="flex h-10 w-10 items-center justify-center rounded-2xl bg-linear-to-r from-violet-600 to-fuchsia-600 text-white shadow-[0_12px_25px_rgba(139,92,246,0.35)]"
                 >
                   ‹
                 </button>
@@ -1021,29 +1415,29 @@ export default function DashboardPage({ initialMenu = "home" }) {
             </div>
           )}
 
-          <div className={`mt-auto rounded-[26px] border p-4 ${theme.card}`}>
+          <div className={`mt-auto rounded-3xl border p-3 ${theme.card}`}>
             <div className="flex items-center gap-3">
-              <img src={profilePhoto} alt="Profile" className="h-14 w-14 rounded-2xl object-cover" />
+              <img src={profilePhoto} alt="Profile" className="h-12 w-12 rounded-2xl object-cover" />
               <div className="min-w-0">
-                <p className={`truncate font-bold ${theme.text}`}>{profileName}</p>
+                <p className={`truncate text-lg font-bold ${theme.text}`}>{profileName}</p>
                 <p className={`truncate text-xs ${theme.soft}`}>{profileEmail}</p>
               </div>
             </div>
 
             <button
               onClick={() => navigate("/")}
-              className="mt-4 w-full rounded-2xl bg-gradient-to-r from-rose-500 to-red-500 py-3 font-semibold text-white shadow-[0_14px_35px_rgba(239,68,68,0.28)] transition hover:scale-[1.01]"
+              className="mt-3.5 w-full rounded-2xl bg-linear-to-r from-rose-500 to-red-500 py-2.5 font-semibold text-white shadow-[0_14px_35px_rgba(239,68,68,0.28)] transition hover:scale-[1.01]"
             >
               {t.logout}
             </button>
           </div>
         </aside>
 
-        <main className={`relative z-10 flex-1 p-4 pl-0 ${theme.main}`}>
-          <div className={`${theme.card} rounded-[32px] border p-5 md:p-6`}>
+        <main className={`relative z-10 flex-1 min-h-0 p-4 pl-0 ${theme.main}`}>
+          <div className={`${theme.card} flex h-[calc(100vh-2rem)] min-h-0 flex-col overflow-hidden rounded-4xl border p-5 md:p-6`}>
             <div className="mb-8 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.25em] text-violet-500">Najot Talim</p>
+                <p className={`text-sm font-semibold uppercase tracking-[0.25em] ${theme.accentText}`}>Najot Talim</p>
                 <h2 className={`mt-2 text-3xl font-black ${theme.text}`}>{greetingText}</h2>
               </div>
 
@@ -1064,20 +1458,32 @@ export default function DashboardPage({ initialMenu = "home" }) {
                   🔔
                 </button>
 
-                <button
-                  onClick={() => setDarkMode(!darkMode)}
-                  className={`flex h-12 items-center gap-2 rounded-2xl border px-4 font-semibold transition ${theme.topBtn}`}
-                >
-                  <span>{darkMode ? "☀️" : "🌙"}</span>
-                  <span>{t.darkMode}</span>
-                </button>
+                <div className={`flex items-center gap-1 rounded-2xl border p-1 ${theme.select}`}>
+                  {modeOptions.map((mode) => {
+                    const active = themeMode === mode.key;
+                    return (
+                      <button
+                        key={mode.key}
+                        onClick={() => setThemeMode(mode.key)}
+                        className={`rounded-xl px-3 py-2 text-sm font-semibold transition ${
+                          active
+                            ? `bg-linear-to-r ${theme.accentBg} text-white shadow ring-2 ${theme.modeRing}`
+                            : `${theme.menu} hover:opacity-80`
+                        }`}
+                      >
+                        <span className="mr-1">{mode.icon}</span>
+                        {mode.label}
+                      </button>
+                    );
+                  })}
+                </div>
 
                 <button
                   ref={profileButtonRef}
                   onClick={() => setShowProfilePanel((prev) => !prev)}
                   className="group relative"
                 >
-                  <div className="rounded-[22px] bg-gradient-to-r from-violet-600 to-fuchsia-600 p-[2px] shadow-[0_14px_35px_rgba(139,92,246,0.35)] transition group-hover:scale-105">
+                  <div className="rounded-[22px] bg-linear-to-r from-violet-600 to-fuchsia-600 p-0.5 shadow-[0_14px_35px_rgba(139,92,246,0.35)] transition group-hover:scale-105">
                     <img
                       src={profilePhoto}
                       alt="User"
@@ -1089,10 +1495,10 @@ export default function DashboardPage({ initialMenu = "home" }) {
                 {showProfilePanel && (
                   <div
                     ref={profilePanelRef}
-                    className={`absolute right-0 top-[78px] z-[95] w-[340px] overflow-hidden rounded-[28px] border shadow-[0_35px_80px_rgba(15,23,42,0.25)] ${theme.subpanel}`}
+                    className={`absolute right-0 top-19.5 z-95 w-85 overflow-hidden rounded-[28px] border shadow-[0_35px_80px_rgba(15,23,42,0.25)] ${theme.subpanel}`}
                   >
                     <div className="relative overflow-hidden p-5">
-                      <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-r from-violet-600 to-fuchsia-600" />
+                      <div className="absolute inset-x-0 top-0 h-28 bg-linear-to-r from-violet-600 to-fuchsia-600" />
                       <div className="relative mt-8 flex items-end gap-4">
                         <img
                           src={profilePhoto}
@@ -1119,7 +1525,7 @@ export default function DashboardPage({ initialMenu = "home" }) {
 
                       <button
                         onClick={() => navigate("/")}
-                        className="w-full rounded-2xl bg-gradient-to-r from-rose-500 to-red-500 py-3 font-semibold text-white shadow-[0_14px_35px_rgba(239,68,68,0.28)]"
+                        className="w-full rounded-2xl bg-linear-to-r from-rose-500 to-red-500 py-3 font-semibold text-white shadow-[0_14px_35px_rgba(239,68,68,0.28)]"
                       >
                         {t.logout}
                       </button>
@@ -1129,7 +1535,9 @@ export default function DashboardPage({ initialMenu = "home" }) {
               </div>
             </div>
 
-            {renderContent()}
+            <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+              {renderContent()}
+            </div>
           </div>
         </main>
       </div>

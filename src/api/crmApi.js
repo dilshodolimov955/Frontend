@@ -89,6 +89,7 @@ export const coursesApi = {
 
 export const groupsApi = {
   getAll: async () => unwrap(await apiClient.get("/groups/all")),
+  getMy: async () => unwrap(await apiClient.get("/groups/my")),
   getStudentsByGroup: async (groupId) =>
     unwrap(await apiClient.get(`/groups/students/${groupId}`)),
   getLessonsByGroup: async (groupId) =>

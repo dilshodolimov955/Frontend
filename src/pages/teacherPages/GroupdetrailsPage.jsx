@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import HomeworkDetailPage from "./HomeworkDetailPage";
-import {attendanceApi,groupsApi,homeworkApi,lessonsApi,lessonVideosApi,studentGroupApi,studentsApi,teachersApi,} from "../api/crmApi";
+import {
+  attendanceApi,
+  groupsApi,
+  homeworkApi,
+  lessonsApi,
+  lessonVideosApi,
+  studentGroupApi,
+  studentsApi,
+  teachersApi,
+} from "../../api/crmApi";
+import { getAuthUserFromStorage } from "../../utils/authToken";
 
 const defaultTeachers = [];
 
@@ -50,6 +60,9 @@ export default function GroupDetailsPage({
   group,
   onBack,
 }) {
+  const authUser = useMemo(() => getAuthUserFromStorage(), []);
+  const isTeacher = authUser?.role === "TEACHER";
+
   const normalizeDays = (value) => {
     if (Array.isArray(value)) return value;
     if (typeof value === "string") {
@@ -117,8 +130,6 @@ export default function GroupDetailsPage({
   const [videoUploading, setVideoUploading] = useState(false);
   const [videoLessonId, setVideoLessonId] = useState("");
   const [showVideoUploadModal, setShowVideoUploadModal] = useState(false);
-  const [videoDraftFile, setVideoDraftFile] = useState(null);
-  const [videoDragActive, setVideoDragActive] = useState(false);
   const [lessons, setLessons] = useState([]);
   const [teachers, setTeachers] = useState(
     group?.teacher
@@ -276,12 +287,6 @@ export default function GroupDetailsPage({
   }, [showVideoUploadModal, lessons, videoLessonId]);
 
   useEffect(() => {
-    if (showVideoUploadModal) return;
-    setVideoDraftFile(null);
-    setVideoDragActive(false);
-  }, [showVideoUploadModal]);
-
-  useEffect(() => {
     setAttendance((prev) => {
       const next = {};
 
@@ -329,7 +334,6 @@ export default function GroupDetailsPage({
   const [selectedHomework, setSelectedHomework] = useState(null);
   const [isHomeworkOpening, setIsHomeworkOpening] = useState(false);
   const [openingHomeworkTitle, setOpeningHomeworkTitle] = useState("");
-  const [homeworkInitialTab, setHomeworkInitialTab] = useState("all");
 
   const [editForm, setEditForm] = useState({
     name: groupData.name,
@@ -376,13 +380,8 @@ export default function GroupDetailsPage({
   const actionBtnClass = darkMode
     ? "px-3 py-2 rounded-xl border border-slate-700 text-slate-200 hover:bg-slate-800 transition text-sm"
     : "px-3 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 transition text-sm";
-  const topActionBtnClass = darkMode
-    ? "inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2 text-sm font-semibold text-slate-100 transition hover:border-slate-500 hover:bg-slate-800"
-    : "inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow";
 
-  const infoCardClass = darkMode
-    ? `${theme.card} border border-slate-700/80 rounded-3xl p-4 shadow-[0_14px_40px_rgba(15,23,42,0.35)] min-h-0`
-    : `${theme.card} border border-slate-200/80 rounded-3xl p-4 shadow-[0_12px_35px_rgba(15,23,42,0.08)] min-h-0`;
+  const infoCardClass = `${theme.card} border rounded-2xl p-3 shadow-sm min-h-0`;
   const innerBorderClass = darkMode ? "border-slate-700" : "border-slate-200";
   const personCardClass = darkMode
     ? "group flex items-center justify-between gap-3 rounded-2xl border border-slate-700/90 bg-slate-900/70 px-3 py-2.5 min-w-0 transition hover:bg-slate-800/80 hover:border-slate-600"
@@ -392,8 +391,8 @@ export default function GroupDetailsPage({
     : "w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 bg-gradient-to-br from-slate-100 to-slate-200 text-slate-700";
 
   const inputClass = darkMode
-    ? "w-full rounded-2xl border border-slate-600 bg-slate-900/80 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
-    : "w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20";
+    ? "w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none"
+    : "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none";
 
   const tabClass = (active) =>
     active
@@ -717,6 +716,11 @@ export default function GroupDetailsPage({
   };
 
   const loadTeacherOptions = async () => {
+    if (isTeacher) {
+      setTeacherOptions([]);
+      return;
+    }
+
     try {
       setTeacherOptionsLoading(true);
       const result = await teachersApi.getAll();
@@ -730,6 +734,11 @@ export default function GroupDetailsPage({
   };
 
   const loadStudentOptions = async () => {
+    if (isTeacher) {
+      setStudentOptions([]);
+      return;
+    }
+
     try {
       setStudentOptionsLoading(true);
       const result = await studentsApi.getAll();
@@ -919,7 +928,6 @@ export default function GroupDetailsPage({
         file,
       });
       await loadVideos();
-      setVideoDraftFile(null);
       setShowVideoUploadModal(false);
     } catch (error) {
       alert(error?.response?.data?.message || "Video yuklashda xato");
@@ -928,21 +936,11 @@ export default function GroupDetailsPage({
     }
   };
 
-  const handleVideoPick = (file) => {
-    if (!file) return;
-    setVideoDraftFile(file);
-  };
-
   const openHomeworkDetail = (homework) => {
-    openHomeworkDetailWithTab(homework, "all");
-  };
-
-  const openHomeworkDetailWithTab = (homework, tabName = "all") => {
     if (!homework?.id) return;
 
     setOpeningHomeworkTitle(homework.title || "Uyga vazifa");
     setIsHomeworkOpening(true);
-    setHomeworkInitialTab(tabName);
 
     if (homeworkOpenTimerRef.current) {
       clearTimeout(homeworkOpenTimerRef.current);
@@ -1055,8 +1053,7 @@ export default function GroupDetailsPage({
 
     try {
       setDeletingHomeworkId(id);
-      await homeworkApi.remove(Number(id));
-      setSuccessToast("Uyga vazifa muvaffaqiyatli o‘chirildi");
+      await homeworkApi.remove(id);
       await loadHomeworks();
     } catch (error) {
       alert(error?.response?.data?.message || "Uyga vazifani o‘chirishda xato");
@@ -1084,6 +1081,26 @@ export default function GroupDetailsPage({
       setGroupDeleteLoading(false);
     }
   };
+
+  if (groupDeleted) {
+    return (
+      <div className="min-h-[70vh] w-full flex items-center justify-center p-4 overflow-hidden">
+        <div
+          className={`${theme.card} border rounded-2xl p-6 text-center shadow-sm max-w-md w-full`}
+        >
+          <h2 className={`text-xl font-bold mb-2 ${theme.text}`}>
+            Guruh o‘chirildi
+          </h2>
+          <p className={`${theme.soft} mb-4`}>
+            Bu guruh muvaffaqiyatli o‘chirildi.
+          </p>
+          <button onClick={onBack} className={actionBtnClass}>
+            ← Orqaga qaytish
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (isHomeworkOpening) {
     return (
@@ -1120,35 +1137,27 @@ export default function GroupDetailsPage({
     );
   }
 
-  if (groupDeleted) {
+  if (selectedHomework) {
     return (
-      <div className="h-dvh w-full flex items-center justify-center p-4 overflow-hidden">
-        <div
-          className={`${theme.card} border rounded-2xl p-6 text-center shadow-sm max-w-md w-full`}
-        >
-          <h2 className={`text-xl font-bold mb-2 ${theme.text}`}>
-            Guruh o‘chirildi
-          </h2>
-          <p className={`${theme.soft} mb-4`}>
-            Bu guruh muvaffaqiyatli o‘chirildi.
-          </p>
-          <button onClick={onBack} className={actionBtnClass}>
-            ← Orqaga qaytish
-          </button>
-        </div>
-      </div>
+      <HomeworkDetailPage
+        homework={selectedHomework}
+        onBack={() => {
+          setSelectedHomework(null);
+          setOpeningHomeworkTitle("");
+        }}
+      />
     );
   }
 
   return (
     <>
       {successToast && (
-        <div className="fixed right-4 top-4 z-[130] max-w-sm rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-lg">
+        <div className="fixed right-4 top-4 z-130 max-w-sm rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-lg">
           <p className="text-sm font-semibold text-emerald-700">{successToast}</p>
         </div>
       )}
 
-      <div className="h-dvh w-full overflow-hidden">
+      <div className="min-h-[70vh] w-full overflow-hidden">
         <div className="h-full flex flex-col gap-3 p-3 overflow-hidden">
           <div className="shrink-0 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3 min-w-0">
             <div className="flex items-start sm:items-center gap-3 flex-wrap min-w-0">
@@ -1169,41 +1178,45 @@ export default function GroupDetailsPage({
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              <button onClick={openEditModal} className={topActionBtnClass}>
-                <span aria-hidden="true">✏️</span>
-                <span>Tahrirlash</span>
-              </button>
+              {!isTeacher && (
+                <button onClick={openEditModal} className={actionBtnClass}>
+                  ✏️ Tahrirlash
+                </button>
+              )}
 
-              <button
-                onClick={() => {
-                  setSelectedTeacherId("");
-                  setShowTeacherModal(true);
-                }}
-                className={topActionBtnClass}
-              >
-                <span aria-hidden="true">👨‍🏫</span>
-                <span>O‘qituvchi qo‘shish</span>
-              </button>
+              {!isTeacher && (
+                <button
+                  onClick={() => {
+                    setSelectedTeacherId("");
+                    setShowTeacherModal(true);
+                  }}
+                  className={actionBtnClass}
+                >
+                  + O‘qituvchi qo‘shish
+                </button>
+              )}
 
-              <button
-                onClick={() => {
-                  setSelectedStudentId("");
-                  setShowStudentModal(true);
-                }}
-                className={topActionBtnClass}
-              >
-                <span aria-hidden="true">🎓</span>
-                <span>O‘quvchi qo‘shish</span>
-              </button>
+              {!isTeacher && (
+                <button
+                  onClick={() => {
+                    setSelectedStudentId("");
+                    setShowStudentModal(true);
+                  }}
+                  className={actionBtnClass}
+                >
+                  + O‘quvchi qo‘shish
+                </button>
+              )}
 
-              <button
-                disabled={groupDeleteLoading}
-                onClick={deleteGroup}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-r from-rose-500 to-red-500 text-white shadow-sm transition hover:opacity-90 disabled:opacity-60"
-                title="Guruhni o‘chirish"
-              >
-                {groupDeleteLoading ? "..." : "🗑️"}
-              </button>
+              {!isTeacher && (
+                <button
+                  disabled={groupDeleteLoading}
+                  onClick={deleteGroup}
+                  className="w-10 h-10 rounded-xl bg-red-500 hover:bg-red-600 text-white transition shrink-0 disabled:opacity-60"
+                >
+                  {groupDeleteLoading ? "..." : "🗑️"}
+                </button>
+              )}
             </div>
           </div>
 
@@ -1256,24 +1269,22 @@ export default function GroupDetailsPage({
                   </div>
 
                   <div className="space-y-2 text-xs sm:text-sm min-w-0">
-                    <div className="grid grid-cols-2 gap-2 mb-2">
-                      <div className={`rounded-2xl border px-3 py-3 ${theme.chip}`}>
-                        <p className={`text-[11px] uppercase tracking-wide ${theme.soft}`}>
-                          O‘qituvchi
-                        </p>
-                        <p className={`mt-1 text-base sm:text-lg font-bold truncate ${theme.text}`}>
-                          {teachers[0]?.name || "-"}
-                        </p>
-                      </div>
+                    <div>
+                      <p className={theme.soft}>Kurs nomi</p>
+                      <p
+                        className={`font-medium wrap-break-word ${theme.text}`}
+                      >
+                        {groupData.course}
+                      </p>
+                    </div>
 
-                      <div className={`rounded-2xl border px-3 py-3 ${theme.chip}`}>
-                        <p className={`text-[11px] uppercase tracking-wide ${theme.soft}`}>
-                          Talabalar
-                        </p>
-                        <p className={`mt-1 text-base sm:text-lg font-bold ${theme.text}`}>
-                          {students.length} ta
-                        </p>
-                      </div>
+                    <div>
+                      <p className={theme.soft}>Kurs to‘lovi</p>
+                      <p
+                        className={`font-medium wrap-break-word ${theme.text}`}
+                      >
+                        {Number(groupData.price || 0).toLocaleString()} so‘m
+                      </p>
                     </div>
 
                     <div>
@@ -1368,7 +1379,8 @@ export default function GroupDetailsPage({
                             ...
                           </button>
 
-                          {openPersonMenu?.type === "teacher" &&
+                          {!isTeacher &&
+                            openPersonMenu?.type === "teacher" &&
                             openPersonMenu?.id === teacher.id && (
                               <div
                                 className={`absolute right-0 top-9 z-30 min-w-30 rounded-xl border shadow-lg p-1 ${
@@ -1481,7 +1493,8 @@ export default function GroupDetailsPage({
                                 ...
                               </button>
 
-                              {openPersonMenu?.type === "student" &&
+                              {!isTeacher &&
+                                openPersonMenu?.type === "student" &&
                                 openPersonMenu?.id === student.id && (
                                   <div
                                     className={`absolute right-0 top-9 z-30 min-w-30 rounded-xl border shadow-lg p-1 ${
@@ -1525,47 +1538,21 @@ export default function GroupDetailsPage({
 
               {activeMainTab === "malumotlar" && (
                 <div
-                  className={`${theme.card} relative border rounded-3xl shadow-[0_16px_45px_rgba(15,23,42,0.12)] min-w-0 min-h-0 flex flex-col overflow-hidden`}
+                  className={`${theme.card} border rounded-2xl shadow-sm min-w-0 min-h-0 flex flex-col overflow-hidden`}
                 >
-                  <div className="pointer-events-none absolute inset-0 overflow-hidden">
-                    <div className="absolute -right-14 -top-14 h-40 w-40 rounded-full bg-emerald-500/12 blur-3xl" />
-                    <div className="absolute bottom-0 left-10 h-40 w-40 rounded-full bg-cyan-500/12 blur-3xl" />
-                  </div>
-
                   <div
-                    className={`relative shrink-0 px-5 py-4 flex items-center justify-between gap-3 border-b min-w-0 ${innerBorderClass}`}
+                    className={`shrink-0 px-4 py-3 flex items-center justify-between gap-3 border-b min-w-0 ${innerBorderClass}`}
                   >
-                    <div>
-                      <h3
-                        className={`text-base sm:text-lg font-extrabold ${theme.text}`}
-                      >
-                        Yangi dars yaratish
-                      </h3>
-                      <p className={`mt-1 text-xs sm:text-sm ${theme.soft}`}>
-                        Mavzuni tez kiritib, darsni premium paneldan e'lon qiling
-                      </p>
-                    </div>
-
-                    <span
-                      className={`px-3 py-1.5 rounded-full text-[11px] font-semibold border shrink-0 ${theme.chip}`}
+                    <h3
+                      className={`text-sm sm:text-base font-semibold ${theme.text}`}
                     >
-                      Smart Builder
-                    </span>
+                      Yangi dars yaratish
+                    </h3>
                   </div>
 
-                  <div className="relative flex-1 min-h-0 overflow-auto p-4 sm:p-6">
-                    <div className="max-w-5xl mx-auto grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
-                      <div className={`${darkMode ? "bg-slate-900/70 border-slate-700/80" : "bg-white/80 border-slate-200/80"} border rounded-3xl p-4 sm:p-5`}>
-                        <div className="mb-4 flex items-center gap-3">
-                          <div className="h-11 w-11 rounded-2xl bg-linear-to-br from-emerald-500 to-cyan-500 text-white flex items-center justify-center text-lg shadow-sm">
-                            ✍️
-                          </div>
-                          <div>
-                            <p className={`text-sm font-semibold ${theme.text}`}>Mavzu nomi</p>
-                            <p className={`text-xs ${theme.soft}`}>Qisqa va aniq nom kiriting</p>
-                          </div>
-                        </div>
-
+                  <div className="flex-1 min-h-0 overflow-auto p-4 sm:p-6">
+                    <div className="max-w-4xl mx-auto space-y-5">
+                      <div>
                         <label
                           className={`block text-sm font-medium mb-2 ${theme.text}`}
                         >
@@ -1582,83 +1569,29 @@ export default function GroupDetailsPage({
                             }))
                           }
                         />
-
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          {[
-                            "Backend API dizayni",
-                            "CRUD amaliyoti",
-                            "Auth va JWT",
-                            "Prisma relationlar",
-                          ].map((sample) => (
-                            <button
-                              key={sample}
-                              type="button"
-                              onClick={() =>
-                                setLessonForm((prev) => ({
-                                  ...prev,
-                                  title: sample,
-                                }))
-                              }
-                              className={`px-3 py-1.5 rounded-full text-xs border transition ${theme.chip}`}
-                            >
-                              {sample}
-                            </button>
-                          ))}
-                        </div>
-
-                        <div className="flex items-center justify-end gap-3 pt-5">
-                          <button
-                            onClick={() =>
-                              setLessonForm({
-                                title: "",
-                                description: "",
-                                file: null,
-                              })
-                            }
-                            className={`${darkMode ? "border-slate-600 text-slate-200 bg-slate-900 hover:bg-slate-800" : "border-slate-200 text-slate-600 bg-white hover:bg-slate-50"} px-5 py-2.5 rounded-xl border font-medium transition`}
-                          >
-                            Bekor qilish
-                          </button>
-
-                          <button
-                            disabled={lessonSaving}
-                            onClick={addLesson}
-                            className="px-5 py-2.5 rounded-xl bg-linear-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white font-semibold shadow-[0_12px_30px_rgba(16,185,129,0.28)] disabled:opacity-60 transition"
-                          >
-                            {lessonSaving ? "Saqlanmoqda..." : "E'lon qilish"}
-                          </button>
-                        </div>
                       </div>
 
-                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-                        <div className={`${darkMode ? "bg-emerald-500/10 border-emerald-500/25" : "bg-emerald-50 border-emerald-200"} border rounded-3xl p-4`}>
-                          <p className={`text-xs font-semibold uppercase tracking-[0.14em] ${theme.soft}`}>
-                            Dars vaqti
-                          </p>
-                          <p className={`mt-2 text-2xl font-black ${theme.text}`}>
-                            {groupData.lessonTime || groupData.time || "-"}
-                          </p>
-                          <p className={`mt-1 text-xs ${theme.soft}`}>{groupDays.join(", ") || "Kunlar yo'q"}</p>
-                        </div>
+                      <div className="flex items-center justify-end gap-3 pt-2">
+                        <button
+                          onClick={() =>
+                            setLessonForm({
+                              title: "",
+                              description: "",
+                              file: null,
+                            })
+                          }
+                          className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 bg-white hover:bg-slate-50"
+                        >
+                          Bekor qilish
+                        </button>
 
-                        <div className={`${darkMode ? "bg-violet-500/10 border-violet-500/25" : "bg-violet-50 border-violet-200"} border rounded-3xl p-4`}>
-                          <p className={`text-xs font-semibold uppercase tracking-[0.14em] ${theme.soft}`}>
-                            Guruh holati
-                          </p>
-                          <p className={`mt-2 text-2xl font-black ${theme.text}`}>{groupData.status || "ACTIVE"}</p>
-                          <p className={`mt-1 text-xs ${theme.soft}`}>
-                            {students.length} talaba, {teachers.length} o'qituvchi
-                          </p>
-                        </div>
-
-                        <div className={`${darkMode ? "bg-cyan-500/10 border-cyan-500/25" : "bg-cyan-50 border-cyan-200"} border rounded-3xl p-4 sm:col-span-2 lg:col-span-1`}>
-                          <p className={`text-xs font-semibold uppercase tracking-[0.14em] ${theme.soft}`}>
-                            Quick insight
-                          </p>
-                          <p className={`mt-2 text-sm font-semibold ${theme.text}`}>
-                            Mavzu kiritilgach E'lon qilish tugmasi bilan dars jadvalga darhol qo'shiladi.
-                          </p>
-                        </div>
+                        <button
+                          disabled={lessonSaving}
+                          onClick={addLesson}
+                          className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white disabled:opacity-60"
+                        >
+                          {lessonSaving ? "Saqlanmoqda..." : "E'lon qilish"}
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -2073,42 +2006,13 @@ export default function GroupDetailsPage({
                 )}
 
                 {activeLessonTab === "uyga-vazifa" && (
-                  <div className="space-y-3">
-                    <div
-                      className={`flex flex-wrap items-center gap-2 rounded-2xl border px-3 py-2 text-xs sm:text-sm ${
-                        darkMode
-                          ? "border-slate-700 bg-slate-900"
-                          : "border-slate-200 bg-slate-50"
-                      }`}
-                    >
-                      <span className={darkMode ? "text-slate-300" : "text-slate-600"}>
-                        Uyga vazifalar soni:
-                      </span>
-                      <span
-                        className={`rounded-full px-2.5 py-1 font-semibold ${
-                          darkMode
-                            ? "bg-violet-500/20 text-violet-200"
-                            : "bg-violet-100 text-violet-700"
-                        }`}
-                      >
-                        {homeworks.length} ta
-                      </span>
-                      <span className={darkMode ? "text-slate-400" : "text-slate-500"}>
-                        Talabalar soni, topshirilgan va tekshirilgan qiymatlar jadvalda berilgan.
-                      </span>
-                    </div>
-
-                    <div
-                      className="overflow-x-auto overflow-y-auto max-h-[65vh] pr-1"
-                      style={{ scrollbarGutter: "stable" }}
-                    >
-                      <table className="w-full min-w-245 text-sm">
+                  <div
+                    className="overflow-x-auto overflow-y-auto max-h-[65vh] pr-1"
+                    style={{ scrollbarGutter: "stable" }}
+                  >
+                    <table className="w-full min-w-245 text-sm">
                       <thead
-                        className={
-                          darkMode
-                            ? "bg-linear-to-r from-slate-800 to-slate-900"
-                            : "bg-linear-to-r from-slate-50 to-slate-100"
-                        }
+                        className={darkMode ? "bg-slate-800" : "bg-slate-50"}
                       >
                         <tr className={`border-b ${innerBorderClass}`}>
                           <th
@@ -2162,7 +2066,7 @@ export default function GroupDetailsPage({
                           <tr>
                             <td
                               colSpan={9}
-                              className={`px-3 py-8 text-center ${theme.soft}`}
+                              className={`px-3 py-6 text-center ${theme.soft}`}
                             >
                               Uyga vazifalar yuklanmoqda...
                             </td>
@@ -2175,8 +2079,8 @@ export default function GroupDetailsPage({
                             onClick={() => openHomeworkDetail(item)}
                             className={`border-b ${theme.rowBorder} ${
                               darkMode
-                                ? "hover:bg-slate-800/50 cursor-pointer"
-                                : "hover:bg-emerald-50/50 cursor-pointer"
+                                ? "hover:bg-slate-800/40 cursor-pointer"
+                                : "hover:bg-slate-50 cursor-pointer"
                             }`}
                           >
                             <td className={`px-3 py-3 ${theme.text}`}>
@@ -2184,10 +2088,11 @@ export default function GroupDetailsPage({
                             </td>
                             <td className="px-3 py-3">
                               <button
+                                type="button"
                                 onClick={() => openHomeworkDetail(item)}
                                 className={`w-full text-left rounded-md px-3 py-2 text-sm ${
                                   index < 3
-                                    ? "bg-linear-to-r from-orange-500 to-rose-500 text-white"
+                                    ? "bg-[#ff7b57] text-white"
                                     : darkMode
                                       ? "bg-slate-800 text-slate-200"
                                       : "bg-slate-100 text-slate-800"
@@ -2196,60 +2101,20 @@ export default function GroupDetailsPage({
                                 {item.title}
                               </button>
                             </td>
-                            <td className="px-3 py-3 text-center">
-                              <span
-                                className={`inline-flex min-w-8 justify-center rounded-full px-2.5 py-1 text-xs font-bold ${
-                                  darkMode
-                                    ? "bg-violet-500/20 text-violet-200"
-                                    : "bg-violet-100 text-violet-700"
-                                }`}
-                              >
-                                {item.total}
-                              </span>
+                            <td
+                              className={`px-3 py-3 text-center ${theme.text}`}
+                            >
+                              {item.total}
                             </td>
-                            <td className="px-3 py-3 text-center">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (item.submitted > 0) {
-                                    openHomeworkDetailWithTab(item, "kutayotgan");
-                                  }
-                                }}
-                                className={`inline-flex min-w-8 justify-center rounded-full px-2.5 py-1 text-xs font-bold transition ${
-                                  item.submitted > 0
-                                    ? darkMode
-                                      ? "bg-amber-500/20 text-amber-200 hover:bg-amber-500/30 cursor-pointer"
-                                      : "bg-amber-100 text-amber-700 hover:bg-amber-200 cursor-pointer"
-                                    : darkMode
-                                      ? "bg-amber-500/10 text-amber-300 cursor-default"
-                                      : "bg-amber-50 text-amber-600 cursor-default"
-                                }`}
-                                disabled={item.submitted === 0}
-                              >
-                                {item.submitted}
-                              </button>
+                            <td
+                              className={`px-3 py-3 text-center ${theme.text}`}
+                            >
+                              {item.submitted}
                             </td>
-                            <td className="px-3 py-3 text-center">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (item.checked > 0) {
-                                    openHomeworkDetailWithTab(item, "qabul");
-                                  }
-                                }}
-                                className={`inline-flex min-w-8 justify-center rounded-full px-2.5 py-1 text-xs font-bold transition ${
-                                  item.checked > 0
-                                    ? darkMode
-                                      ? "bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30 cursor-pointer"
-                                      : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 cursor-pointer"
-                                    : darkMode
-                                      ? "bg-emerald-500/10 text-emerald-300 cursor-default"
-                                      : "bg-emerald-50 text-emerald-600 cursor-default"
-                                }`}
-                                disabled={item.checked === 0}
-                              >
-                                {item.checked}
-                              </button>
+                            <td
+                              className={`px-3 py-3 text-center ${theme.text}`}
+                            >
+                              {item.checked}
                             </td>
                             <td className={`px-3 py-3 ${theme.text}`}>
                               {item.assignedAt}
@@ -2267,11 +2132,7 @@ export default function GroupDetailsPage({
                                   e.stopPropagation();
                                   deleteHomework(item.id);
                                 }}
-                                className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition disabled:opacity-60 ${
-                                  darkMode
-                                    ? "bg-rose-500/20 text-rose-200 hover:bg-rose-500/30"
-                                    : "bg-rose-100 text-rose-600 hover:bg-rose-200"
-                                }`}
+                                className="text-red-500 text-xs disabled:opacity-60"
                               >
                                 {deletingHomeworkId === item.id
                                   ? "O‘chirilmoqda..."
@@ -2285,7 +2146,7 @@ export default function GroupDetailsPage({
                           <tr>
                             <td
                               colSpan={9}
-                              className={`px-3 py-12 text-center ${theme.soft}`}
+                              className={`px-3 py-10 text-center ${theme.soft}`}
                             >
                               Uyga vazifalar hozircha yo‘q
                             </td>
@@ -2293,7 +2154,6 @@ export default function GroupDetailsPage({
                         )}
                       </tbody>
                     </table>
-                  </div>
                   </div>
                 )}
 
@@ -2623,7 +2483,7 @@ export default function GroupDetailsPage({
             </div>
           )}
 
-          {showTeacherModal && (
+            {!isTeacher && showTeacherModal && (
             <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
               <div
                 className={`${theme.card} w-full max-w-md rounded-2xl border p-4 shadow-xl`}
@@ -2671,7 +2531,7 @@ export default function GroupDetailsPage({
             </div>
           )}
 
-          {showStudentModal && (
+            {!isTeacher && showStudentModal && (
             <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
               <div
                 className={`${theme.card} w-full max-w-md rounded-2xl border p-4 shadow-xl`}
@@ -2728,36 +2588,27 @@ export default function GroupDetailsPage({
       </div>
 
       {showVideoUploadModal && (
-        <div className="fixed inset-0 z-[100] bg-slate-900/55 backdrop-blur-sm flex items-start justify-center overflow-y-auto pt-6 sm:pt-10 px-4 pb-4">
-          <div className={`${theme.card} relative w-full max-w-3xl max-h-[calc(100vh-2.5rem)] overflow-y-auto rounded-3xl border p-5 sm:p-6 shadow-[0_30px_80px_rgba(15,23,42,0.32)]`}>
-            <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">
-              <div className="absolute -right-14 -top-14 h-44 w-44 rounded-full bg-emerald-500/12 blur-3xl" />
-              <div className="absolute -bottom-14 left-8 h-44 w-44 rounded-full bg-cyan-500/12 blur-3xl" />
-            </div>
-
+        <div className="fixed inset-0 z-100 bg-black/50 flex items-start justify-center overflow-y-auto pt-6 sm:pt-10 px-4 pb-4">
+          <div className="bg-white w-full max-w-3xl max-h-[calc(100vh-2.5rem)] overflow-y-auto rounded-2xl shadow-xl border p-5 relative">
             <button
               onClick={() => setShowVideoUploadModal(false)}
-              className={`absolute right-4 top-4 z-10 h-10 w-10 rounded-2xl border text-2xl leading-none transition ${darkMode ? "border-slate-700 text-slate-300 hover:bg-slate-800" : "border-slate-200 text-slate-500 hover:bg-slate-100"}`}
+              className="absolute right-5 top-5 text-slate-400 hover:text-slate-700 text-2xl"
             >
               ×
             </button>
 
-            <div className="relative mb-5 pr-12">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-500">Media manager</p>
-              <h3 className={`mt-1 text-2xl font-black ${theme.text}`}>Videodars yuklash</h3>
-              <p className={`mt-1 text-sm ${theme.soft}`}>
-                Darsni tanlang, videoni qo'shing va bitta bosish bilan yuklang.
-              </p>
-            </div>
+            <h3 className="text-lg font-semibold text-slate-800 mb-4">
+              Qo'shish
+            </h3>
 
             <div className="mb-4">
-              <label className={`block text-sm font-medium mb-2 ${theme.text}`}>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
                 Darsni tanlang
               </label>
               <select
                 value={videoLessonId}
                 onChange={(e) => setVideoLessonId(e.target.value)}
-                className={`${inputClass} pr-10`}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
               >
                 <option value="">Darslardan birini tanlang</option>
                 {lessons.map((lesson) => (
@@ -2769,96 +2620,47 @@ export default function GroupDetailsPage({
             </div>
 
             <div
-              onDragOver={(e) => {
-                e.preventDefault();
-                if (!videoLessonId || videoUploading) return;
-                setVideoDragActive(true);
-              }}
-              onDragLeave={() => setVideoDragActive(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                if (!videoLessonId || videoUploading) return;
-                setVideoDragActive(false);
-                handleVideoPick(e.dataTransfer?.files?.[0]);
-              }}
               onClick={() => {
                 if (!videoLessonId || videoUploading) return;
                 fileRef.current?.click();
               }}
-              className={`rounded-3xl border-2 border-dashed p-8 sm:p-12 text-center cursor-pointer transition ${
-                !videoLessonId
-                  ? darkMode
-                    ? "border-slate-700 bg-slate-900/60 opacity-80"
-                    : "border-slate-200 bg-slate-50/70 opacity-80"
-                  : videoDragActive
-                  ? "border-emerald-400 bg-emerald-500/10 scale-[1.01]"
-                  : darkMode
-                  ? "border-emerald-500/40 bg-slate-900/65 hover:bg-slate-800/70"
-                  : "border-emerald-300 bg-emerald-50/35 hover:bg-emerald-50/60"
-              }`}
+              className="border-2 border-dashed border-emerald-300 rounded-2xl p-10 sm:p-16 text-center cursor-pointer hover:bg-slate-50"
             >
-              <div className="text-emerald-500 text-5xl mb-4">🎬</div>
-              <p className={`text-base sm:text-lg font-semibold ${theme.text}`}>
+              <div className="text-emerald-500 text-4xl mb-4">🧰</div>
+              <p className="text-slate-700 text-base font-medium">
                 Videofaylni yuklash uchun ushbu hudud ustiga bosing yoki faylni
                 shu yerga olib keling
               </p>
               {!videoLessonId && (
-                <p className="text-rose-500 text-sm mt-2 font-medium">
+                <p className="text-red-500 text-sm mt-2">
                   Avval darsni tanlang
                 </p>
               )}
-              <p className={`text-sm mt-2 ${theme.soft}`}>
+              <p className="text-slate-400 text-sm mt-2">
                 Videofayl .mp4, .webm, .mpeg, .avi, .mkv, .mov formatlaridan
                 birida bo‘lishi kerak
               </p>
-
-              {videoDraftFile && (
-                <div className={`mx-auto mt-4 max-w-xl rounded-2xl border px-4 py-3 text-left ${darkMode ? "border-emerald-500/30 bg-emerald-500/10" : "border-emerald-200 bg-white/85"}`}>
-                  <p className={`truncate text-sm font-semibold ${theme.text}`}>{videoDraftFile.name}</p>
-                  <p className={`mt-1 text-xs ${theme.soft}`}>{formatFileSize(videoDraftFile.size)}</p>
-                </div>
-              )}
 
               <input
                 ref={fileRef}
                 type="file"
                 accept="video/*"
                 className="hidden"
-                onChange={(e) => handleVideoPick(e.target.files?.[0])}
+                onChange={(e) => handleVideoUpload(e.target.files?.[0])}
               />
             </div>
 
-            <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
-              <button
-                disabled={!videoDraftFile || !videoLessonId || videoUploading}
-                onClick={() => handleVideoUpload(videoDraftFile)}
-                className="px-5 py-2.5 rounded-xl bg-linear-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-white font-semibold shadow-[0_12px_30px_rgba(16,185,129,0.28)] disabled:opacity-60 disabled:cursor-not-allowed transition"
-              >
-                {videoUploading ? "Yuklanmoqda..." : "Yuklashni boshlash"}
-              </button>
-
+            <div className="flex justify-end mt-5">
               <button
                 disabled={videoUploading}
                 onClick={() => setShowVideoUploadModal(false)}
-                className={`${darkMode ? "border-slate-600 text-slate-200 bg-slate-900 hover:bg-slate-800" : "border-slate-200 text-slate-600 bg-white hover:bg-slate-50"} px-5 py-2.5 rounded-xl border font-medium disabled:opacity-60`}
+                className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-60"
               >
                 Bekor qilish
               </button>
             </div>
           </div>
         </div>
-      )}
-
-      {selectedHomework && (
-        <HomeworkDetailPage
-          homework={selectedHomework}
-          initialTab={homeworkInitialTab}
-          onBack={() => {
-            setSelectedHomework(null);
-            setOpeningHomeworkTitle("");
-            setHomeworkInitialTab("all");
-          }}
-        />
       )}
     </>
   );

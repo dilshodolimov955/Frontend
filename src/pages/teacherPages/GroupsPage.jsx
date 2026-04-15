@@ -1,12 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  coursesApi,
   groupsApi,
-  roomsApi,
   studentGroupApi,
-  studentsApi,
-  teachersApi,
-} from "../api/crmApi";
+} from "../../api/crmApi";
 
 const WEEK_DAYS = [
   "MONDAY",
@@ -39,6 +35,12 @@ const normalizeStatus = (status) => {
   }
 
   return "ACTIVE";
+};
+
+const asList = (payload) => {
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload)) return payload;
+  return [];
 };
 
 export default function GroupsPage({
@@ -98,26 +100,17 @@ export default function GroupsPage({
   const loadData = async () => {
     try {
       setLoading(true);
-      const [groupsRes, coursesRes, roomsRes, teachersRes, studentsRes] =
-        await Promise.allSettled([
-          groupsApi.getAll(),
-          coursesApi.getAll(),
-          roomsApi.getAll(),
-          teachersApi.getAll(),
-          studentsApi.getAll(),
-        ]);
+      const groupsRes = await groupsApi.getMy();
+      const groupsList = asList(groupsRes);
 
-      const groupsList =
-        groupsRes.status === "fulfilled" && Array.isArray(groupsRes.value?.data)
-          ? groupsRes.value.data
-          : [];
       const groupsWithCounts = await Promise.all(
         groupsList.map(async (group) => {
           try {
-            const studentsRes = await groupsApi.getStudentsByGroup(group.id);
-            const count = Array.isArray(studentsRes?.data)
-              ? studentsRes.data.length
+            const studentsResult = await groupsApi.getStudentsByGroup(group.id);
+            const count = Array.isArray(studentsResult?.data)
+              ? studentsResult.data.length
               : 0;
+
             return {
               ...group,
               studentsCount: count,
@@ -126,47 +119,54 @@ export default function GroupsPage({
             return {
               ...group,
               studentsCount: Number(
-                group.studentsCount ??
-                  group.studentCount ??
-                  group.students?.length ??
-                  0,
+                group.studentsCount ?? group.studentCount ?? group.students?.length ?? 0,
               ),
             };
           }
         }),
       );
-      const isTeacher = currentUser?.role === "TEACHER";
 
-      setGroups(
-        isTeacher
-          ? groupsWithCounts.filter(
-              (group) => Number(group.teacherId) === Number(currentUser?.id),
-            )
-          : groupsWithCounts,
-      );
+      setGroups(groupsWithCounts);
       setCourses(
-        coursesRes.status === "fulfilled" &&
-          Array.isArray(coursesRes.value?.data)
-          ? coursesRes.value.data
-          : [],
+        groupsWithCounts
+          .filter((group) => group.courseId)
+          .map((group) => ({
+            id: group.courseId,
+            name: group.course?.name || "-",
+            durationLesson: group.course?.durationLesson,
+            price: group.course?.price,
+          }))
+          .filter(
+            (course, index, arr) =>
+              arr.findIndex((item) => Number(item.id) === Number(course.id)) === index,
+          ),
       );
       setRooms(
-        roomsRes.status === "fulfilled" && Array.isArray(roomsRes.value?.data)
-          ? roomsRes.value.data
-          : [],
+        groupsWithCounts
+          .filter((group) => group.roomId)
+          .map((group) => ({
+            id: group.roomId,
+            name: group.room?.name || "-",
+          }))
+          .filter(
+            (room, index, arr) =>
+              arr.findIndex((item) => Number(item.id) === Number(room.id)) === index,
+          ),
       );
       setTeachers(
-        teachersRes.status === "fulfilled" &&
-          Array.isArray(teachersRes.value?.data)
-          ? teachersRes.value.data
-          : [],
+        groupsWithCounts
+          .filter((group) => group.teacherId)
+          .map((group) => ({
+            id: group.teacherId,
+            fullName:
+              group.teacher?.fullName || currentUser?.fullName || "O'qituvchi",
+          }))
+          .filter(
+            (teacher, index, arr) =>
+              arr.findIndex((item) => Number(item.id) === Number(teacher.id)) === index,
+          ),
       );
-      setStudents(
-        studentsRes.status === "fulfilled" &&
-          Array.isArray(studentsRes.value?.data)
-          ? studentsRes.value.data
-          : [],
-      );
+      setStudents([]);
     } catch (error) {
       setGroups([]);
       setCourses([]);
@@ -186,6 +186,12 @@ export default function GroupsPage({
     if (activeTab === "FREEZE") {
       return groups.filter(
         (group) => normalizeStatus(group.status) === "FREEZE",
+      );
+    }
+
+    if (activeTab === "ARCHIVE") {
+      return groups.filter(
+        (group) => normalizeStatus(group.status) === "INACTIVE",
       );
     }
 
@@ -409,10 +415,9 @@ export default function GroupsPage({
         );
 
         if (!createdGroupId) {
-          const groupsResult = await groupsApi.getAll();
-          const list = Array.isArray(groupsResult?.data)
-            ? groupsResult.data
-            : [];
+          // Teacher flow should only use teacher-visible groups endpoint.
+          const groupsResult = await groupsApi.getMy();
+          const list = asList(groupsResult);
           const createdGroup = list.find(
             (item) =>
               String(item.name || "").toLowerCase() ===
@@ -468,13 +473,12 @@ export default function GroupsPage({
 
     try {
       const studentsRes = await groupsApi.getStudentsByGroup(group.id);
-      preloadedStudents = Array.isArray(studentsRes?.data)
-        ? studentsRes.data.map((student) => ({
+      preloadedStudents = asList(studentsRes)
+        .map((student) => ({
             id: student.id,
             fullName: student.fullName,
             email: student.email || "-",
-          }))
-        : [];
+          }));
     } catch {
       preloadedStudents = [];
     }
@@ -501,60 +505,49 @@ export default function GroupsPage({
 
   return (
     <div className="space-y-6 w-full min-w-0 overflow-x-hidden">
-      <div
-        className={`${theme.card} rounded-3xl border p-5 shadow-sm sm:p-6 ${
-          darkMode
-            ? "border-slate-700 bg-linear-to-b from-slate-900 to-slate-950"
-            : "border-slate-200 bg-linear-to-b from-white via-slate-50 to-slate-100"
-        }`}
-      >
+      <div className={`${theme.card} border rounded-2xl p-5 shadow-sm`}>
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-5">
           <div>
             <h2 className={`text-3xl font-bold ${theme.text}`}>Guruhlar</h2>
             <div className="flex items-center gap-2 mt-3">
               <button
                 onClick={() => setActiveTab("ACTIVE")}
-                className={`px-3.5 py-1.5 text-sm rounded-xl border font-medium transition ${
-                  activeTab === "ACTIVE"
-                    ? darkMode
-                      ? "border-violet-500/50 bg-violet-500/15 text-violet-200"
-                      : "border-violet-300 bg-violet-100 text-violet-700"
-                    : `${theme.tab} hover:opacity-90`
+                className={`px-3 py-1.5 text-sm rounded-lg border ${
+                  activeTab === "ACTIVE" ? theme.tabActive : theme.tab
                 } cursor-pointer`}
               >
                 Asosiy
               </button>
               <button
                 onClick={() => setActiveTab("FREEZE")}
-                className={`px-3.5 py-1.5 text-sm rounded-xl border font-medium transition ${
-                  activeTab === "FREEZE"
-                    ? darkMode
-                      ? "border-violet-500/50 bg-violet-500/15 text-violet-200"
-                      : "border-violet-300 bg-violet-100 text-violet-700"
-                    : `${theme.tab} hover:opacity-90`
+                className={`px-3 py-1.5 text-sm rounded-lg border ${
+                  activeTab === "FREEZE" ? theme.tabActive : theme.tab
                 } cursor-pointer`}
               >
                 Muzlatilganlar
               </button>
-
+              <button
+                onClick={() => setActiveTab("ARCHIVE")}
+                className={`px-3 py-1.5 text-sm rounded-lg border ${
+                  activeTab === "ARCHIVE" ? theme.tabActive : theme.tab
+                } cursor-pointer`}
+              >
+                Arxivdagilar
+              </button>
             </div>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
-            <div className="relative min-w-56">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                🔎
-              </span>
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Qidirish..."
-                className={`rounded-xl border px-4 py-2.5 pl-9 w-full ${theme.input}`}
-              />
-            </div>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Qidirish..."
+              className={`rounded-xl border px-4 py-2.5 min-w-56 ${theme.input}`}
+            />
             <button
               onClick={openAddDrawer}
-              className="bg-linear-to-r from-violet-600 to-fuchsia-600 hover:opacity-90 text-white px-4 py-2.5 rounded-xl shadow-lg shadow-violet-300/40 font-semibold"
+              className="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2.5 rounded-xl"
+              style={{ display: currentUser?.role === "TEACHER" ? "none" : "inline-block" }}
             >
               + Guruh qo'shish
             </button>
@@ -562,37 +555,19 @@ export default function GroupsPage({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
-          <div
-            className={`border rounded-2xl p-4 ${
-              darkMode
-                ? "border-slate-700 bg-slate-900"
-                : "border-slate-200 bg-white"
-            }`}
-          >
+          <div className={`border rounded-2xl p-4 ${theme.card}`}>
             <p className={`text-sm ${theme.soft}`}>Jami guruhlar</p>
             <p className={`mt-2 text-4xl font-bold ${theme.text}`}>
               {activeGroupsCount}
             </p>
           </div>
-          <div
-            className={`border rounded-2xl p-4 ${
-              darkMode
-                ? "border-cyan-500/30 bg-cyan-500/10"
-                : "border-cyan-200 bg-cyan-50"
-            }`}
-          >
+          <div className={`border rounded-2xl p-4 ${theme.card}`}>
             <p className={`text-sm ${theme.soft}`}>O'qituvchilar</p>
             <p className={`mt-2 text-4xl font-bold ${theme.text}`}>
               {groupTeachersCount}
             </p>
           </div>
-          <div
-            className={`border rounded-2xl p-4 ${
-              darkMode
-                ? "border-emerald-500/30 bg-emerald-500/10"
-                : "border-emerald-200 bg-emerald-50"
-            }`}
-          >
+          <div className={`border rounded-2xl p-4 ${theme.card}`}>
             <p className={`text-sm ${theme.soft}`}>Talabalar</p>
             <p className={`mt-2 text-4xl font-bold ${theme.text}`}>
               {totalStudents}
@@ -600,19 +575,9 @@ export default function GroupsPage({
           </div>
         </div>
 
-        <div
-          className={`overflow-x-auto rounded-2xl border shadow-sm ${
-            darkMode ? "border-slate-700" : "border-slate-300"
-          }`}
-        >
+        <div className="overflow-x-auto rounded-2xl border">
           <table className="min-w-6xl w-full text-sm">
-            <thead
-              className={
-                darkMode
-                  ? "bg-linear-to-r from-slate-800 to-slate-900"
-                  : "bg-linear-to-r from-slate-100 to-slate-50"
-              }
-            >
+            <thead className={darkMode ? "bg-slate-800" : "bg-slate-50"}>
               <tr>
                 <th className={`text-left px-4 py-3 font-medium ${theme.soft}`}>
                   Status
@@ -679,10 +644,10 @@ export default function GroupsPage({
                       onClick={() =>
                         handleOpenGroupDetails(group, course, roomName)
                       }
-                      className={`border-t ${theme.rowBorder} transition-colors ${
+                      className={`border-t ${theme.rowBorder} ${
                         darkMode
-                          ? "hover:bg-slate-800/40 cursor-pointer"
-                          : "hover:bg-violet-50/40 cursor-pointer"
+                          ? "hover:bg-slate-800/30 cursor-pointer"
+                          : "hover:bg-slate-50 cursor-pointer"
                       }`}
                     >
                       <td className="px-4 py-3">
@@ -751,54 +716,50 @@ export default function GroupsPage({
                                 initialMainTab: "akademik-davomat",
                               });
                             }}
-                              className={`px-3 h-8 rounded-lg border text-xs font-semibold transition cursor-pointer ${
-                                darkMode
-                                  ? "border-slate-600 bg-slate-800 text-slate-100 hover:bg-slate-700"
-                                  : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-                              }`}
+                            className="px-3 h-8 rounded-lg border text-xs font-medium cursor-pointer"
                           >
                             Davomat
                           </button>
 
                           <div className="relative">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setOpenActionMenuId((prev) =>
-                                  prev === group.id ? null : group.id,
-                                )
-                              }
-                              className={`w-8 h-8 rounded-lg border text-sm leading-none flex items-center justify-center cursor-pointer transition ${theme.text} ${
-                                darkMode
-                                  ? "border-slate-600 bg-slate-800 hover:bg-slate-700"
-                                  : "border-slate-300 bg-white hover:bg-slate-50"
-                              }`}
-                            >
-                              ...
-                            </button>
+                            {currentUser?.role !== "TEACHER" && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setOpenActionMenuId((prev) =>
+                                      prev === group.id ? null : group.id,
+                                    )
+                                  }
+                                  className={`w-8 h-8 rounded-lg border text-sm leading-none flex items-center justify-center cursor-pointer ${theme.text}`}
+                                >
+                                  ...
+                                </button>
 
-                            {openActionMenuId === group.id && (
-                              <div
-                                className={`absolute right-0 top-9 z-20 min-w-36 rounded-xl border p-1 shadow-lg ${theme.subpanel}`}
-                              >
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    openEditDrawer(group);
-                                    setOpenActionMenuId(null);
-                                  }}
-                                  className={`w-full rounded-lg px-3 py-2 text-left text-xs ${theme.submenuText} hover:bg-slate-100/70 cursor-pointer`}
-                                >
-                                  Tahrirlash
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDelete(group.id)}
-                                  className="w-full rounded-lg px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50 cursor-pointer"
-                                >
-                                  O‘chirish
-                                </button>
-                              </div>
+                                {openActionMenuId === group.id && (
+                                  <div
+                                    className={`absolute right-0 top-9 z-20 min-w-36 rounded-xl border p-1 shadow-lg ${theme.subpanel}`}
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        openEditDrawer(group);
+                                        setOpenActionMenuId(null);
+                                      }}
+                                      className={`w-full rounded-lg px-3 py-2 text-left text-xs ${theme.submenuText} hover:bg-slate-100/70 cursor-pointer`}
+                                    >
+                                      Tahrirlash
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDelete(group.id)}
+                                      className="w-full rounded-lg px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50 cursor-pointer"
+                                    >
+                                      O‘chirish
+                                    </button>
+                                  </div>
+                                )}
+                              </>
                             )}
                           </div>
                         </div>
@@ -812,9 +773,11 @@ export default function GroupsPage({
                     colSpan={10}
                     className={`px-4 py-8 text-center ${theme.soft}`}
                   >
-                    {activeTab === "FREEZE"
-                      ? "Muzlatilgan guruhlar topilmadi"
-                      : "Asosiy guruhlar topilmadi"}
+                    {activeTab === "ARCHIVE"
+                      ? "Arxivdagi guruhlar topilmadi"
+                      : activeTab === "FREEZE"
+                        ? "Muzlatilgan guruhlar topilmadi"
+                        : "Asosiy guruhlar topilmadi"}
                   </td>
                 </tr>
               )}

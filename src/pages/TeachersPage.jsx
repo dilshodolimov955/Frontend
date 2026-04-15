@@ -17,7 +17,6 @@ const getInitials = (name = "") => {
 };
 
 export default function TeachersPage({ theme, darkMode, currentUser }) {
-  const [activeTab, setActiveTab] = useState("active");
   const [showDrawer, setShowDrawer] = useState(false);
   const [editingTeacherId, setEditingTeacherId] = useState(null);
   const [search, setSearch] = useState("");
@@ -87,10 +86,6 @@ export default function TeachersPage({ theme, darkMode, currentUser }) {
 
   const filteredTeachers = useMemo(() => {
     return teachers.filter((teacher) => {
-      const matchesBranch = true;
-      const matchesArchive =
-        activeTab === "active" ? !teacher.archived : teacher.archived;
-
       const query = search.trim().toLowerCase();
       const matchesSearch =
         !query ||
@@ -98,9 +93,9 @@ export default function TeachersPage({ theme, darkMode, currentUser }) {
         teacher.email.toLowerCase().includes(query) ||
         teacher.position.toLowerCase().includes(query);
 
-      return matchesBranch && matchesArchive && matchesSearch;
+      return !teacher.archived && matchesSearch;
     });
-  }, [teachers, activeTab, search]);
+  }, [teachers, search]);
 
   const resetForm = () => {
     setEditingTeacherId(null);
@@ -210,8 +205,23 @@ export default function TeachersPage({ theme, darkMode, currentUser }) {
     }
   };
 
-  const toggleArchive = (id) => {
-    alert("Arxiv uchun alohida endpoint yo'q");
+  const handleDelete = async (id) => {
+    const isConfirmed = window.confirm(
+      "Rostan ham o‘qituvchini o‘chirmoqchimisiz?",
+    );
+    if (!isConfirmed) return;
+
+    try {
+      await teachersApi.remove(id);
+      setTeachers((prev) => prev.filter((teacher) => teacher.id !== id));
+
+      if (Number(activeTeacher?.id) === Number(id)) {
+        setActiveTeacher(null);
+        setTeacherGroups([]);
+      }
+    } catch (error) {
+      alert(error?.response?.data?.message || "O‘qituvchini o‘chirishda xato");
+    }
   };
 
   const openTeacherGroups = async (teacher) => {
@@ -276,25 +286,9 @@ export default function TeachersPage({ theme, darkMode, currentUser }) {
         </div>
 
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4 min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => setActiveTab("active")}
-              className={`px-4 py-2 rounded-xl text-sm font-medium border ${
-                activeTab === "active" ? theme.tabActive : theme.tab
-              }`}
-            >
-              Faol o‘qituvchilar
-            </button>
-
-            <button
-              onClick={() => setActiveTab("archive")}
-              className={`px-4 py-2 rounded-xl text-sm font-medium border ${
-                activeTab === "archive" ? theme.tabActive : theme.tab
-              }`}
-            >
-              Arxiv
-            </button>
-          </div>
+          <p className={`text-sm font-medium ${theme.soft}`}>
+            Faol o‘qituvchilar ro‘yxati
+          </p>
 
           <input
             type="text"
@@ -412,15 +406,15 @@ export default function TeachersPage({ theme, darkMode, currentUser }) {
                         <td className="px-3 py-4">
                           <div className="flex items-center justify-end gap-2">
                             <button
-                              onClick={() => toggleArchive(teacher.id)}
+                              onClick={() => handleDelete(teacher.id)}
                               className={`w-9 h-9 rounded-xl border flex items-center justify-center ${
                                 darkMode
-                                  ? "border-slate-700 hover:bg-slate-800"
-                                  : "border-slate-200 hover:bg-slate-50"
+                                  ? "border-rose-700/70 text-rose-300 hover:bg-rose-900/30"
+                                  : "border-rose-200 text-rose-600 hover:bg-rose-50"
                               }`}
-                              title="Arxiv"
+                              title="O‘chirish"
                             >
-                              📦
+                              🗑️
                             </button>
 
                             <button
@@ -529,15 +523,15 @@ export default function TeachersPage({ theme, darkMode, currentUser }) {
                 <div className="mt-4 flex items-center justify-between gap-3 flex-wrap">
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => toggleArchive(teacher.id)}
+                      onClick={() => handleDelete(teacher.id)}
                       className={`w-9 h-9 rounded-xl border flex items-center justify-center ${
                         darkMode
-                          ? "border-slate-700 hover:bg-slate-800"
-                          : "border-slate-200 hover:bg-slate-50"
+                          ? "border-rose-700/70 text-rose-300 hover:bg-rose-900/30"
+                          : "border-rose-200 text-rose-600 hover:bg-rose-50"
                       }`}
-                      title="Arxiv"
+                      title="O‘chirish"
                     >
-                      📦
+                      🗑️
                     </button>
 
                     <button
