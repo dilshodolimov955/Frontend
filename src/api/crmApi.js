@@ -24,6 +24,7 @@ const toFormData = (payload) => {
 };
 
 export const authApi = {
+  login: async (payload) => unwrap(await apiClient.post("/auth/login", payload)),
   loginAdmin: async (payload) =>
     unwrap(await apiClient.post("/auth/login/admin", payload)),
   loginTeacher: async (payload) =>
@@ -113,7 +114,7 @@ export const lessonsApi = {
   getByGroup: async (groupId) =>
     unwrap(await apiClient.get(`/lessons/group/${groupId}`)),
   create: async (payload) =>
-    unwrap(await apiClient.post("/lessons", payload)),
+    unwrap(await apiClient.post("/lessons", toFormData(payload))),
 };
 
 export const homeworkApi = {

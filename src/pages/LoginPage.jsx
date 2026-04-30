@@ -48,26 +48,10 @@ export default function LoginPage() {
         password,
       };
 
-      const loginFlows = [
-        () => authApi.loginTeacher(credentials),
-        () => authApi.loginAdmin(credentials),
-        () => authApi.loginStudent(credentials),
-      ];
-
-      let result = null;
-      let lastError = null;
-
-      for (const flow of loginFlows) {
-        try {
-          result = await flow();
-          if (result?.accessToken) break;
-        } catch (error) {
-          lastError = error;
-        }
-      }
+      const result = await authApi.login(credentials);
 
       if (!result?.accessToken) {
-        throw lastError || new Error("Token kelmadi");
+        throw new Error("Token kelmadi");
       }
 
       localStorage.setItem("crm_access_token", result.accessToken);

@@ -111,6 +111,7 @@ export default function GroupDetailsPage({
   };
 
   const fileRef = useRef(null);
+  const homeworkFileRef = useRef(null);
   const homeworkOpenTimerRef = useRef(null);
 
   const [groupDeleted, setGroupDeleted] = useState(false);
@@ -864,6 +865,9 @@ export default function GroupDetailsPage({
         durationTime: "16",
         file: null,
       });
+      if (homeworkFileRef.current) {
+        homeworkFileRef.current.value = "";
+      }
       setLessonPage("list");
       setActiveLessonTab("uyga-vazifa");
     } catch (error) {
@@ -1576,7 +1580,6 @@ export default function GroupDetailsPage({
                           onClick={() =>
                             setLessonForm({
                               title: "",
-                              description: "",
                               file: null,
                             })
                           }
@@ -2285,95 +2288,167 @@ export default function GroupDetailsPage({
                     ← Orqaga
                   </button>
 
-                  <h2 className={`text-2xl font-bold mb-6 ${theme.text}`}>
-                    Yangi uyga vazifa yaratish
-                  </h2>
-
-                  <div className="space-y-6">
-                    <div>
-                      <label
-                        className={`block text-sm font-medium mb-2 ${theme.text}`}
-                      >
-                        * Dars
-                      </label>
-                      <select
-                        className={inputClass}
-                        value={homeworkForm.lessonId}
-                        onChange={(e) =>
-                          setHomeworkForm({
-                            ...homeworkForm,
-                            lessonId: e.target.value,
-                            title:
-                              lessons.find(
-                                (lesson) =>
-                                  Number(lesson.id) === Number(e.target.value),
-                              )?.title || homeworkForm.title,
-                          })
-                        }
-                      >
-                        <option value="">Darslardan birini tanlang</option>
-                        {lessons.map((lesson) => (
-                          <option key={lesson.id} value={lesson.id}>
-                            {lesson.title}
-                          </option>
-                        ))}
-                      </select>
+                  <div className={`overflow-hidden rounded-3xl border ${darkMode ? "border-slate-700" : "border-slate-200"}`}>
+                    <div className={`px-5 py-4 sm:px-6 ${darkMode ? "bg-linear-to-r from-slate-900 via-slate-800 to-slate-900" : "bg-linear-to-r from-cyan-50 via-emerald-50 to-sky-50"}`}>
+                      <h2 className={`text-2xl font-black ${theme.text}`}>
+                        Yangi uyga vazifa yaratish
+                      </h2>
+                      <p className={`mt-1 text-sm ${theme.soft}`}>
+                        Mavzuni tanlang, muddatni belgilang va kerak bo'lsa fayl biriktiring.
+                      </p>
                     </div>
 
-                    <div>
-                      <label
-                        className={`block text-sm font-medium mb-2 ${theme.text}`}
-                      >
-                        * Sarlavha
-                      </label>
-                      <input
-                        className={inputClass}
-                        placeholder="Uyga vazifa sarlavhasi"
-                        value={homeworkForm.title}
-                        onChange={(e) =>
-                          setHomeworkForm({
-                            ...homeworkForm,
-                            title: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
+                    <div className="space-y-6 p-5 sm:p-6">
+                      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                        <div>
+                          <label
+                            className={`block text-sm font-medium mb-2 ${theme.text}`}
+                          >
+                            * Dars
+                          </label>
+                          <select
+                            className={inputClass}
+                            value={homeworkForm.lessonId}
+                            onChange={(e) =>
+                              setHomeworkForm({
+                                ...homeworkForm,
+                                lessonId: e.target.value,
+                                title:
+                                  lessons.find(
+                                    (lesson) =>
+                                      Number(lesson.id) === Number(e.target.value),
+                                  )?.title || homeworkForm.title,
+                              })
+                            }
+                          >
+                            <option value="">Darslardan birini tanlang</option>
+                            {lessons.map((lesson) => (
+                              <option key={lesson.id} value={lesson.id}>
+                                {lesson.title}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
 
-                    <div>
-                      <label
-                        className={`block text-sm font-medium mb-2 ${theme.text}`}
-                      >
-                        Tugash muddati (soat)
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        className={inputClass}
-                        value={homeworkForm.durationTime}
-                        onChange={(e) =>
-                          setHomeworkForm({
-                            ...homeworkForm,
-                            durationTime: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
+                        <div>
+                          <label
+                            className={`block text-sm font-medium mb-2 ${theme.text}`}
+                          >
+                            Tugash muddati (soat)
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            className={inputClass}
+                            value={homeworkForm.durationTime}
+                            onChange={(e) =>
+                              setHomeworkForm({
+                                ...homeworkForm,
+                                durationTime: e.target.value,
+                              })
+                            }
+                          />
+                        </div>
+                      </div>
 
-                    <div className="flex items-center justify-end gap-3 pt-2">
-                      <button
-                        onClick={() => setLessonPage("list")}
-                        className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 bg-white hover:bg-slate-50"
-                      >
-                        Bekor qilish
-                      </button>
+                      <div>
+                        <label
+                          className={`block text-sm font-medium mb-2 ${theme.text}`}
+                        >
+                          * Sarlavha
+                        </label>
+                        <input
+                          className={inputClass}
+                          placeholder="Uyga vazifa sarlavhasi"
+                          value={homeworkForm.title}
+                          onChange={(e) =>
+                            setHomeworkForm({
+                              ...homeworkForm,
+                              title: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
 
-                      <button
-                        disabled={homeworkSaving}
-                        onClick={addHomework}
-                        className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white disabled:opacity-60"
-                      >
-                        {homeworkSaving ? "Saqlanmoqda..." : "E'lon qilish"}
-                      </button>
+                      <div>
+                        <label
+                          className={`mb-2 block text-sm font-medium ${theme.text}`}
+                        >
+                          Qo'shimcha fayl (ixtiyoriy)
+                        </label>
+                        <div
+                          onClick={() => homeworkFileRef.current?.click()}
+                          className={`cursor-pointer rounded-2xl border-2 border-dashed px-4 py-5 transition ${
+                            darkMode
+                              ? "border-cyan-500/35 bg-slate-900/60 hover:bg-slate-800/70"
+                              : "border-cyan-300 bg-cyan-50/40 hover:bg-cyan-50/70"
+                          }`}
+                        >
+                          <p className={`text-sm font-semibold ${theme.text}`}>
+                            Faylni biriktirish uchun shu joyni bosing
+                          </p>
+                          <p className={`mt-1 text-xs ${theme.soft}`}>
+                            Qo'llab-quvvatlanadi: PDF, DOC, DOCX, ZIP, JPG, PNG
+                          </p>
+
+                          {homeworkForm.file && (
+                            <div className={`mt-3 rounded-xl border px-3 py-2 ${darkMode ? "border-cyan-500/30 bg-cyan-500/10" : "border-cyan-200 bg-white/90"}`}>
+                              <p className={`truncate text-sm font-semibold ${theme.text}`}>
+                                {homeworkForm.file.name}
+                              </p>
+                              <p className={`mt-1 text-xs ${theme.soft}`}>
+                                {formatFileSize(homeworkForm.file.size)}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        <input
+                          ref={homeworkFileRef}
+                          type="file"
+                          className="hidden"
+                          accept=".pdf,.doc,.docx,.zip,.jpg,.jpeg,.png,.txt"
+                          onChange={(e) => {
+                            const selected = e.target.files?.[0] || null;
+                            setHomeworkForm((prev) => ({
+                              ...prev,
+                              file: selected,
+                            }));
+                          }}
+                        />
+
+                        {homeworkForm.file && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setHomeworkForm((prev) => ({ ...prev, file: null }));
+                              if (homeworkFileRef.current) {
+                                homeworkFileRef.current.value = "";
+                              }
+                            }}
+                            className={`mt-2 text-xs font-semibold ${darkMode ? "text-rose-300 hover:text-rose-200" : "text-rose-600 hover:text-rose-700"}`}
+                          >
+                            Biriktirilgan faylni olib tashlash
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-end gap-3 pt-2">
+                        <button
+                          onClick={() => setLessonPage("list")}
+                          className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-slate-600 hover:bg-slate-50"
+                        >
+                          Bekor qilish
+                        </button>
+
+                        <button
+                          disabled={homeworkSaving}
+                          onClick={addHomework}
+                          className="rounded-xl bg-linear-to-r from-emerald-500 to-cyan-500 px-5 py-2.5 text-white shadow-[0_12px_26px_rgba(16,185,129,0.26)] transition hover:from-emerald-600 hover:to-cyan-600 disabled:opacity-60"
+                        >
+                          {homeworkSaving ? "Saqlanmoqda..." : "E'lon qilish"}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

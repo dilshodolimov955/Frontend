@@ -2,6 +2,21 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { homeworkApi, homeworkResultsApi } from "../api/crmApi";
 
+const TAB_KEYS = ["kutayotgan", "qaytarilgan", "qabul", "bajarilmagan"];
+
+const resolveInitialTab = (initialTab) => {
+  if (!initialTab || initialTab === "all") return null;
+  return TAB_KEYS.includes(initialTab) ? initialTab : null;
+};
+
+const pickDefaultTab = (mapped) => {
+  if ((mapped.bajarilmagan || []).length > 0) return "bajarilmagan";
+  if ((mapped.kutayotgan || []).length > 0) return "kutayotgan";
+  if ((mapped.qaytarilgan || []).length > 0) return "qaytarilgan";
+  if ((mapped.qabul || []).length > 0) return "qabul";
+  return "bajarilmagan";
+};
+
 const formatDateTime = (value) => {
   if (!value) return "-";
   const date = new Date(value);
@@ -15,11 +30,11 @@ const formatDateTime = (value) => {
   });
 };
 
-export default function HomeworkDetailPage({ homework, onBack }) {
+export default function HomeworkDetailPage({ homework, onBack, initialTab = "all" }) {
   const navigate = useNavigate();
   const { homeworkId } = useParams();
 
-  const [tab, setTab] = useState("kutayotgan");
+  const [tab, setTab] = useState(resolveInitialTab(initialTab) || "bajarilmagan");
   const [studentsByTab, setStudentsByTab] = useState({
     kutayotgan: [],
     qaytarilgan: [],
@@ -60,6 +75,10 @@ export default function HomeworkDetailPage({ homework, onBack }) {
     const timer = setTimeout(() => setToast(null), 2600);
     return () => clearTimeout(timer);
   }, [toast]);
+
+  useEffect(() => {
+    setTab(resolveInitialTab(initialTab) || "bajarilmagan");
+  }, [currentHomeworkId, initialTab]);
 
   const handleBack = () => {
     if (onBack) {
@@ -129,7 +148,14 @@ export default function HomeworkDetailPage({ homework, onBack }) {
 
       setStudentsByTab(mapped);
 
-      const currentList = mapped[tab] || [];
+      const requestedTab = resolveInitialTab(initialTab);
+      const nextTab =
+        requestedTab && (mapped[requestedTab] || []).length > 0
+          ? requestedTab
+          : pickDefaultTab(mapped);
+      setTab(nextTab);
+
+      const currentList = mapped[nextTab] || [];
       if (currentList.length > 0) {
         setSelectedStudent((prev) => {
           if (!prev) return currentList[0];
@@ -145,6 +171,7 @@ export default function HomeworkDetailPage({ homework, onBack }) {
         qabul: [],
         bajarilmagan: [],
       });
+      setTab(resolveInitialTab(initialTab) || "bajarilmagan");
       setSelectedStudent(null);
       showToast(error?.response?.data?.message || "Talabalar ro'yxatini olishda xato", "error");
     } finally {
@@ -154,7 +181,7 @@ export default function HomeworkDetailPage({ homework, onBack }) {
 
   useEffect(() => {
     loadStatuses();
-  }, [currentHomeworkId]);
+  }, [currentHomeworkId, initialTab]);
 
   useEffect(() => {
     const list = studentsByTab[tab] || [];
